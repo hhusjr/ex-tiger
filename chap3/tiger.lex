@@ -1,7 +1,7 @@
 %{
 #include <string.h>
 #include "util.h"
-#include "tokens.h"
+#include "y.tab.h"
 #include "errormsg.h"
 
 #define QS_BUF_SIZE 1024
@@ -62,6 +62,8 @@ white (" "|"\t"|"\n"|"\v"|"\f"|"\r")
 "!=" { adjust(); return NEQ; }
 "<" { adjust(); return LT; }
 ">" { adjust(); return GT; }
+"<=" { adjust(); return LE; }
+">=" { adjust(); return GE; }
 "&" { adjust(); return AND; }
 "|" { adjust(); return OR; }
 "array" { adjust(); return ARRAY; }

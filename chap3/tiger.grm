@@ -110,12 +110,13 @@ exp         :       lvalue
             |       LET decs IN END
             |       LPAREN exp RPAREN
             ;
-lvalue      :       ID
-            |       lvalue DOT ID
-            |       arridx
+lvalue      :       ID lsuf
+            |       ID
             ;
-arridx      :       ID LBRACK exp RBRACK
-            |       arridx LBRACK exp RBRACK
+lsuf        :       LBRACK exp RBRACK
+            |       DOT ID
+            |       lsuf LBRACK exp RBRACK
+            |       lsuf DOT ID
             ;
 seq         :       exp
             |       seq SEMICOLON exp

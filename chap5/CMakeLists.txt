@@ -12,4 +12,16 @@ FLEX_TARGET(scanner tiger.lex ${CMAKE_CURRENT_BINARY_DIR}/lex.yy.c)
 BISON_TARGET(parser tiger.grm ${CMAKE_CURRENT_BINARY_DIR}/y.tab.c)
 ADD_FLEX_BISON_DEPENDENCY(scanner parser)
 
-add_executable(tiger parsetest.c util.c errormsg.c absyn.c prabsyn.c symbol.c table.c ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS})
+add_executable(tiger
+        parsetest.c
+        semant.c
+        types.c
+        util.c
+        errormsg.c
+        absyn.c
+        prabsyn.c
+        symbol.c
+        table.c
+        env.c
+        ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS}
+        )

@@ -61,7 +61,7 @@ white (" "|"\t"|"\n"|"\v"|"\f"|"\r")
 "/" { adjust(); return DIVIDE; }
 "=" { adjust(); return EQ; }
 ":=" { adjust(); return ASSIGN; }
-"!=" { adjust(); return NEQ; }
+"<>" { adjust(); return NEQ; }
 "<" { adjust(); return LT; }
 ">" { adjust(); return GT; }
 "<=" { adjust(); return LE; }

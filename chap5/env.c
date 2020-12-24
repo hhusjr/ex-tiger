@@ -1,11 +1,21 @@
 #include "env.h"
 #include "util.h"
 #include <stdlib.h>
+#include <stdbool.h>
 
 E_enventry E_VarEntry(Ty_ty ty) {
     E_enventry p = checked_malloc(sizeof(*p));
     p->kind = E_varEntry;
     p->u.var.ty = ty;
+    p->u.var.is_loop_var = false;
+    return p;
+}
+
+E_enventry E_LoopVarEntry(Ty_ty ty) {
+    E_enventry p = checked_malloc(sizeof(*p));
+    p->kind = E_varEntry;
+    p->u.var.ty = ty;
+    p->u.var.is_loop_var = true;
     return p;
 }
 

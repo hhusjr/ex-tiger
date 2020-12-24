@@ -16,8 +16,8 @@ void parse(string fname) {
     EM_reset(fname);
     if (yyparse() == 0) /* parsing worked */ {
         fprintf(stderr, "Parsing successful!\n");
-        pr_exp(fopen("ast.out", "w"), absyn_root, 4);
         SEM_transProg(absyn_root);
+        pr_exp(fopen("ast.out", "w"), absyn_root, 4);
     } else fprintf(stderr, "Parsing failed\n");
 }
 

@@ -13,6 +13,7 @@ struct E_enventry_ {
     union {
         struct {
             Ty_ty ty;
+            _Bool is_loop_var;
         } var;
         struct {
             Ty_tyList formals;
@@ -22,6 +23,8 @@ struct E_enventry_ {
 };
 
 E_enventry E_VarEntry(Ty_ty ty);
+
+E_enventry E_LoopVarEntry(Ty_ty ty);
 
 E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result);
 

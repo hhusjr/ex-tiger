@@ -3,6 +3,13 @@
  *
  */
 
+#ifndef TIGER_TEMP
+#define TIGER_TEMP
+
+#include <util.h>
+#include <stdio.h>
+#include <symbol.h>
+
 typedef struct Temp_temp_ *Temp_temp;
 Temp_temp Temp_newtemp(void);
 
@@ -28,3 +35,4 @@ void Temp_dumpMap(FILE *out, Temp_map m);
 
 Temp_map Temp_name(void);
 
+#endif

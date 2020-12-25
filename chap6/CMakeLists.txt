@@ -24,6 +24,7 @@ add_executable(tiger
         table.c
         env.c
         temp.c
-        temp.h
+        mipsframe.c
+        escape.c
         ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS}
         )

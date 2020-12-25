@@ -12,7 +12,7 @@
 #include "types.h"
 #include "env.h"
 #include "absyn.h"
-#include <stdbool.h>
+#include <escape.h>
 
 struct expty_ {
     Tr_exp exp;
@@ -40,7 +40,7 @@ static void *requireSym(int pos, S_table t, S_symbol sym, void* not_found) {
 
 static expty visitExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
 
-static expty visitVar(S_table tenv, S_table venv, A_var var, _Bool *is_loopvar_check);
+static expty visitVar(S_table tenv, S_table venv, A_var var, bool *is_loopvar_check);
 
 static expty visitNilExp();
 
@@ -88,7 +88,7 @@ static Ty_ty actualTy(Ty_ty ty) {
     return ty;
 }
 
-static _Bool isTypeCompat(Ty_ty lhs, Ty_ty rhs) {
+static bool isTypeCompat(Ty_ty lhs, Ty_ty rhs) {
     Ty_ty l = actualTy(lhs), r = actualTy(rhs);
 
     return (l == r && l->kind != Ty_nil && r->kind != Ty_nil)
@@ -133,7 +133,7 @@ static expty visitExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
     }
 }
 
-static expty visitVar(S_table tenv, S_table venv, A_var var, _Bool *is_loopvar_check) {
+static expty visitVar(S_table tenv, S_table venv, A_var var, bool *is_loopvar_check) {
     switch (var->kind) {
         case A_simpleVar: {
             E_enventry e = (E_enventry) requireSym(var->pos, venv, var->u.simple, Ty_Int());
@@ -269,7 +269,7 @@ static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, int *loop_dep
     A_var lhs = exp->u.assign.var;
     A_exp rhs = exp->u.assign.exp;
 
-    _Bool is_loop_var = false;
+    bool is_loop_var = FALSE;
     Ty_ty lhs_t = visitVar(tenv, venv, lhs, &is_loop_var).ty;
     Ty_ty rhs_t = visitExp(tenv, venv, rhs, loop_depth).ty;
 
@@ -625,6 +625,7 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth) {
 }
 
 void SEM_transProg(A_exp exp) {
+    Esc_findEscape(exp);
     S_table tenv = E_base_tenv();
     S_table venv = E_base_venv();
     int loop_depth = 0;

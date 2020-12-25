@@ -1,8 +1,12 @@
-//
-// Created by …Úø°»Â on 2020/12/25.
-//
+/*
+ * escape.h - escape analysis
+ */
 
-#ifndef TIGER_CHAP6_ESCAPE_H
-#define TIGER_CHAP6_ESCAPE_H
+#ifndef TIGER_ESCAPE
+#define TIGER_ESCAPE
 
-#endif //TIGER_CHAP6_ESCAPE_H
+#include <absyn.h>
+
+void Esc_findEscape(A_exp exp);
+
+#endif //TIGER_ESCAPE

@@ -135,7 +135,7 @@ exp         :       lvalue { $$ = A_VarExp(EM_tokPos, $1); }
             |       FOR ID ASSIGN exp TO exp DO exp %prec FOREXP { $$ = A_ForExp(EM_tokPos, S_Symbol($2), $4, $6, $8); }
             |       BREAK { $$ = A_BreakExp(EM_tokPos); }
             |       LET decs IN seq END { $$ = A_LetExp(EM_tokPos, $2, A_SeqExp(EM_tokPos, $4)); }
-            |       LET decs IN END { $$ = A_LetExp(EM_tokPos, $2, NULL); }
+            |       LET decs IN END { $$ = A_LetExp(EM_tokPos, $2, A_SeqExp(EM_tokPos, NULL)); }
             |       LPAREN exp RPAREN { $$ = $2; }
             ;
 lvalue      :       lsuf { $$ = $1; }

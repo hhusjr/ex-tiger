@@ -13,6 +13,7 @@
 #include "env.h"
 #include "absyn.h"
 #include <escape.h>
+#include <translate.h>
 
 struct expty_ {
     Tr_exp exp;
@@ -28,7 +29,6 @@ static expty Expty(Tr_exp exp, Ty_ty ty) {
     return e;
 }
 
-
 static void *requireSym(int pos, S_table t, S_symbol sym, void* not_found) {
     void* look = S_look(t, sym);
     if (!look) {
@@ -38,7 +38,26 @@ static void *requireSym(int pos, S_table t, S_symbol sym, void* not_found) {
     return look;
 }
 
-static expty visitExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+struct visitorAttrs_ {
+    int* loop_depth;
+    Tr_level level;
+};
+typedef struct visitorAttrs_ visitorAttrs;
+
+static visitorAttrs VisitorAttrs(int* loop_depth, Tr_level level) {
+    visitorAttrs p = {
+            .loop_depth = loop_depth,
+            .level = level
+    };
+    return p;
+}
+
+static visitorAttrs VisitorAttrs_changeLevel(visitorAttrs attrs, Tr_level level) {
+    attrs.level = level;
+    return attrs;
+}
+
+static expty visitExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
 static expty visitVar(S_table tenv, S_table venv, A_var var, bool *is_loopvar_check);
 
@@ -48,35 +67,35 @@ static expty visitIntExp();
 
 static expty visitStringExp();
 
-static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitSeqExp(S_table tenv, S_table venv, A_expList exps, int *loop_depth);
+static expty visitSeqExp(S_table tenv, S_table venv, A_expList exps, visitorAttrs attrs);
 
-static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitForExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitBreakExp(A_exp exp, const int *loop_depth);
+static expty visitBreakExp(A_exp exp, const visitorAttrs attrs);
 
-static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth);
+static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-void visitDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth);
+void visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
 
 void visitTypeDec(S_table tenv, S_table venv, A_dec dec);
 
-void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth);
+void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
 
-void visitVarDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth);
+void visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
 
 Ty_ty visitTy(S_table tenv, S_table venv, A_ty ty);
 
@@ -96,7 +115,7 @@ static bool isTypeCompat(Ty_ty lhs, Ty_ty rhs) {
         ||  (l->kind == Ty_record && r->kind == Ty_nil);
 }
 
-static expty visitExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     switch (exp->kind) {
         case A_varExp:
             return visitVar(tenv, venv, exp->u.var, NULL);
@@ -107,27 +126,27 @@ static expty visitExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
         case A_stringExp:
             return visitStringExp();
         case A_callExp:
-            return visitCallExp(tenv, venv, exp, loop_depth);
+            return visitCallExp(tenv, venv, exp, attrs);
         case A_opExp:
-            return visitOpExp(tenv, venv, exp, loop_depth);
+            return visitOpExp(tenv, venv, exp, attrs);
         case A_recordExp:
-            return visitRecordExp(tenv, venv, exp, loop_depth);
+            return visitRecordExp(tenv, venv, exp, attrs);
         case A_seqExp:
-            return visitSeqExp(tenv, venv, exp->u.seq, loop_depth);
+            return visitSeqExp(tenv, venv, exp->u.seq, attrs);
         case A_assignExp:
-            return visitAssignExp(tenv, venv, exp, loop_depth);
+            return visitAssignExp(tenv, venv, exp, attrs);
         case A_ifExp:
-            return visitIfExp(tenv, venv, exp, loop_depth);
+            return visitIfExp(tenv, venv, exp, attrs);
         case A_whileExp:
-            return visitWhileExp(tenv, venv, exp, loop_depth);
+            return visitWhileExp(tenv, venv, exp, attrs);
         case A_forExp:
-            return visitForExp(tenv, venv, exp, loop_depth);
+            return visitForExp(tenv, venv, exp, attrs);
         case A_breakExp:
-            return visitBreakExp(exp, loop_depth);
+            return visitBreakExp(exp, attrs);
         case A_letExp:
-            return visitLetExp(tenv, venv, exp, loop_depth);
+            return visitLetExp(tenv, venv, exp, attrs);
         case A_arrayExp:
-            return visitArrayExp(tenv, venv, exp, loop_depth);
+            return visitArrayExp(tenv, venv, exp, attrs);
         default:
             assert(0);
     }
@@ -173,7 +192,7 @@ static expty visitVar(S_table tenv, S_table venv, A_var var, bool *is_loopvar_ch
     }
 }
 
-static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     E_enventry func = requireSym(exp->pos, venv, exp->u.call.func, NULL);
     if (!func || func->kind != E_funEntry) {
         EM_error(exp->pos, "function name undefined or not a function");
@@ -187,7 +206,7 @@ static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth
 
     while (arg && formal) {
         Ty_ty ideal = formal->head;
-        Ty_ty actual = visitExp(tenv, venv, arg->head, loop_depth).ty;
+        Ty_ty actual = visitExp(tenv, venv, arg->head, attrs).ty;
 
         assert(ideal->kind != Ty_nil);
         if (!isTypeCompat(ideal, actual)) {
@@ -219,7 +238,7 @@ static expty visitStringExp() {
     return Expty(NULL, Ty_String());
 }
 
-static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     A_exp l = exp->u.op.left, r = exp->u.op.right;
     A_oper op = exp->u.op.oper;
 
@@ -228,8 +247,8 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) 
         case A_minusOp:
         case A_timesOp:
         case A_divideOp:
-            if (!isTypeCompat(visitExp(tenv, venv, l, loop_depth).ty, Ty_Int())
-                || !isTypeCompat(visitExp(tenv, venv, r, loop_depth).ty, Ty_Int())) {
+            if (!isTypeCompat(visitExp(tenv, venv, l, attrs).ty, Ty_Int())
+                || !isTypeCompat(visitExp(tenv, venv, r, attrs).ty, Ty_Int())) {
                 EM_error(exp->pos, "both left operand and right operand must be Integer value");
                 return Expty(NULL, Ty_Int());
             }
@@ -239,11 +258,11 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) 
         case A_leOp:
         case A_gtOp:
         case A_geOp:
-            if (isTypeCompat(visitExp(tenv, venv, l, loop_depth).ty, Ty_String()) &&
-                isTypeCompat(visitExp(tenv, venv, r, loop_depth).ty, Ty_String())) {
+            if (isTypeCompat(visitExp(tenv, venv, l, attrs).ty, Ty_String()) &&
+                isTypeCompat(visitExp(tenv, venv, r, attrs).ty, Ty_String())) {
                 return Expty(NULL, Ty_Int());
             }
-            if (isTypeCompat(visitExp(tenv, venv, l, loop_depth).ty, Ty_Int()) && isTypeCompat(visitExp(tenv, venv, r, loop_depth).ty, Ty_Int())) {
+            if (isTypeCompat(visitExp(tenv, venv, l, attrs).ty, Ty_Int()) && isTypeCompat(visitExp(tenv, venv, r, attrs).ty, Ty_Int())) {
                 return Expty(NULL, Ty_Int());
             }
             EM_error(exp->pos, "both left operand and right operand must be Integer value or String value");
@@ -251,8 +270,8 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) 
 
         case A_eqOp:
         case A_neqOp: {
-            Ty_ty l_ty = visitExp(tenv, venv, l, loop_depth).ty;
-            Ty_ty r_ty = visitExp(tenv, venv, r, loop_depth).ty;
+            Ty_ty l_ty = visitExp(tenv, venv, l, attrs).ty;
+            Ty_ty r_ty = visitExp(tenv, venv, r, attrs).ty;
             if (isTypeCompat(l_ty, r_ty)) {
                 return Expty(NULL, Ty_Int());
             }
@@ -265,13 +284,13 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) 
     }
 }
 
-static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     A_var lhs = exp->u.assign.var;
     A_exp rhs = exp->u.assign.exp;
 
     bool is_loop_var = FALSE;
     Ty_ty lhs_t = visitVar(tenv, venv, lhs, &is_loop_var).ty;
-    Ty_ty rhs_t = visitExp(tenv, venv, rhs, loop_depth).ty;
+    Ty_ty rhs_t = visitExp(tenv, venv, rhs, attrs).ty;
 
     assert(lhs_t->kind != Ty_nil);
     if (!isTypeCompat(lhs_t, rhs_t)) {
@@ -287,17 +306,17 @@ static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, int *loop_dep
     return Expty(NULL, Ty_Void());
 }
 
-static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     A_exp test = exp->u.iff.test;
     A_exp then = exp->u.iff.then;
     A_exp elsee = exp->u.iff.elsee;
 
-    if (!isTypeCompat(visitExp(tenv, venv, test, loop_depth).ty, Ty_Int())) {
+    if (!isTypeCompat(visitExp(tenv, venv, test, attrs).ty, Ty_Int())) {
         EM_error(test->pos, "test expression must have Integer type");
         return Expty(NULL, Ty_Void());
     }
 
-    Ty_ty then_t = visitExp(tenv, venv, then, loop_depth).ty;
+    Ty_ty then_t = visitExp(tenv, venv, then, attrs).ty;
 
     if (elsee == NULL) {
         if (!isTypeCompat(then_t, Ty_Void())) {
@@ -308,7 +327,7 @@ static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) 
         return Expty(NULL, Ty_Void());
     }
 
-    Ty_ty else_t = visitExp(tenv, venv, elsee, loop_depth).ty;
+    Ty_ty else_t = visitExp(tenv, venv, elsee, attrs).ty;
 
     if (!isTypeCompat(then_t, else_t)) {
         EM_error(then->pos, "then and else must have same type (or both void)");
@@ -318,18 +337,18 @@ static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) 
     return Expty(NULL, then_t);
 }
 
-static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     A_exp test = exp->u.whilee.test;
     A_exp body = exp->u.whilee.body;
 
-    if (!isTypeCompat(visitExp(tenv, venv, test, loop_depth).ty, Ty_Int())) {
+    if (!isTypeCompat(visitExp(tenv, venv, test, attrs).ty, Ty_Int())) {
         EM_error(test->pos, "test expression must have Integer type");
         return Expty(NULL, Ty_Void());
     }
 
-    (*loop_depth)++;
-    Ty_ty body_ty = visitExp(tenv, venv, body, loop_depth).ty;
-    (*loop_depth)--;
+    (*attrs.loop_depth)++;
+    Ty_ty body_ty = visitExp(tenv, venv, body, attrs).ty;
+    (*attrs.loop_depth)--;
 
     if (!isTypeCompat(body_ty, Ty_Void())) {
         EM_error(test->pos, "loop body must be void");
@@ -339,27 +358,30 @@ static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, int *loop_dept
     return Expty(NULL, Ty_Void());
 }
 
-static expty visitForExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     S_symbol id = exp->u.forr.var;
     A_exp lo = exp->u.forr.lo, hi = exp->u.forr.hi;
     A_exp body = exp->u.forr.body;
 
-    if (!isTypeCompat(visitExp(tenv, venv, lo, loop_depth).ty, Ty_Int())) {
+    if (!isTypeCompat(visitExp(tenv, venv, lo, attrs).ty, Ty_Int())) {
         EM_error(lo->pos, "lower bound of for loop must be Integer");
         return Expty(NULL, Ty_Void());
     }
 
-    if (!isTypeCompat(visitExp(tenv, venv, hi, loop_depth).ty, Ty_Int())) {
+    if (!isTypeCompat(visitExp(tenv, venv, hi, attrs).ty, Ty_Int())) {
         EM_error(lo->pos, "upper bound of for loop must be Integer");
         return Expty(NULL, Ty_Void());
     }
 
-    (*loop_depth)++;
+    (*attrs.loop_depth)++;
     S_beginScope(venv);
     S_enter(venv, id, E_LoopVarEntry(Ty_Int()));
-    Ty_ty body_ty = visitExp(tenv, venv, body, loop_depth).ty;
+
+    Tr_allocLocal(attrs.level, exp->u.forr.escape);
+
+    Ty_ty body_ty = visitExp(tenv, venv, body, attrs).ty;
     S_endScope(venv);
-    (*loop_depth)--;
+    (*attrs.loop_depth)--;
     
     if (!isTypeCompat(body_ty, Ty_Void())) {
         EM_error(body->pos, "loop body must be void");
@@ -369,25 +391,25 @@ static expty visitForExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth)
     return Expty(NULL, Ty_Void());
 }
 
-static expty visitBreakExp(A_exp exp, const int *loop_depth) {
-    if (*loop_depth <= 0) {
+static expty visitBreakExp(A_exp exp, const visitorAttrs attrs) {
+    if (*attrs.loop_depth <= 0) {
         EM_error(exp->pos, "break must be inside a loop");
     }
     return Expty(NULL, Ty_Void());
 }
 
-static expty visitSeqExp(S_table tenv, S_table venv, A_expList exps, int *loop_depth) {
+static expty visitSeqExp(S_table tenv, S_table venv, A_expList exps, visitorAttrs attrs) {
     Ty_ty result = Ty_Void();
 
     for (A_expList p = exps; p; p = p->tail) {
         A_exp exp = p->head;
-        result = visitExp(tenv, venv, exp, loop_depth).ty;
+        result = visitExp(tenv, venv, exp, attrs).ty;
     }
 
     return Expty(NULL, result);
 }
 
-static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     Ty_ty ty = requireSym(exp->pos, tenv, exp->u.array.typ, Ty_Void());
     Ty_ty actual_ty = actualTy(ty);
     if (actual_ty->kind != Ty_array) {
@@ -398,12 +420,12 @@ static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, int *loop_dept
     A_exp size = exp->u.array.size;
     A_exp init = exp->u.array.init;
 
-    if (!isTypeCompat(visitExp(tenv, venv, size, loop_depth).ty, Ty_Int())) {
+    if (!isTypeCompat(visitExp(tenv, venv, size, attrs).ty, Ty_Int())) {
         EM_error(size->pos, "array size must be Integer");
         return Expty(NULL, ty);
     }
 
-    if (!isTypeCompat(visitExp(tenv, venv, init, loop_depth).ty, actual_ty->u.array)) {
+    if (!isTypeCompat(visitExp(tenv, venv, init, attrs).ty, actual_ty->u.array)) {
         EM_error(init->pos, "array initializer must be the same type as array elements");
         return Expty(NULL, ty);
     }
@@ -411,7 +433,7 @@ static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, int *loop_dept
     return Expty(NULL, ty);
 }
 
-static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     Ty_ty ty = requireSym(exp->pos, tenv, exp->u.record.typ, NULL);
     Ty_ty actual_ty = actualTy(ty);
     if (actual_ty->kind != Ty_record) {
@@ -436,7 +458,7 @@ static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, int *loop_dep
             return Expty(NULL, ty);
         }
 
-        expty vis_exp = visitExp(tenv, venv, efield->exp, loop_depth);
+        expty vis_exp = visitExp(tenv, venv, efield->exp, attrs);
         if (!isTypeCompat(field->ty, vis_exp.ty)) {
             EM_error(exp->pos, "field %s has wrong type", symbol->name);
             return Expty(NULL, ty);
@@ -446,7 +468,7 @@ static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, int *loop_dep
     return Expty(NULL, ty);
 }
 
-static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth) {
+static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
     S_beginScope(venv);
     S_beginScope(tenv);
 
@@ -490,22 +512,22 @@ static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, int *loop_depth)
 
     for (A_decList dec_list = exp->u.let.decs; dec_list; dec_list = dec_list->tail) {
         A_dec dec = dec_list->head;
-        visitDec(tenv, venv, dec, loop_depth);
+        visitDec(tenv, venv, dec, attrs);
     }
-    expty vis_body = visitExp(tenv, venv, exp->u.let.body, loop_depth);
+    expty vis_body = visitExp(tenv, venv, exp->u.let.body, attrs);
     S_endScope(venv);
     S_endScope(tenv);
     return Expty(NULL, vis_body.ty);
 }
 
-void visitDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth) {
+void visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
     switch (dec->kind) {
         case A_functionDec:
-            visitFunctionDec(tenv, venv, dec, loop_depth);
+            visitFunctionDec(tenv, venv, dec, attrs);
             return;
 
         case A_varDec:
-            visitVarDec(tenv, venv, dec, loop_depth);
+            visitVarDec(tenv, venv, dec, attrs);
             return;
 
         case A_typeDec:
@@ -557,8 +579,11 @@ Ty_ty visitTy(S_table tenv, S_table venv, A_ty ty) {
     }
 }
 
-void visitVarDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth) {
-    Ty_ty init_type = visitExp(tenv, venv, dec->u.var.init, loop_depth).ty;
+void visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
+    // Allocate local variable
+    Tr_allocLocal(attrs.level, dec->u.var.escape);
+
+    Ty_ty init_type = visitExp(tenv, venv, dec->u.var.init, attrs).ty;
     Ty_ty init_type_actual = actualTy(init_type);
     Ty_ty ty;
     if (dec->u.var.typ == NULL) {
@@ -581,7 +606,7 @@ void visitVarDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth) {
     S_enter(venv, dec->u.var.var, E_VarEntry(ty));
 }
 
-void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth) {
+void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
     for (A_fundecList fundecs = dec->u.function; fundecs; fundecs = fundecs->tail) {
         A_fundec fundec = fundecs->head;
         Ty_ty result = fundec->result ? requireSym(fundec->pos, tenv, fundec->result, Ty_Void()) : Ty_Void();
@@ -610,13 +635,23 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, int *loop_depth) {
         Ty_tyList tail = e->u.fun.formals;
         S_beginScope(venv);
         A_fieldList fields = fundec->params;
+        U_boolList formals = NULL, formals_tail = NULL;
         for (; fields; fields = fields->tail) {
             assert(tail);
             S_enter(venv, fields->head->name, E_VarEntry(tail->head));
+            if (!formals) {
+                formals = formals_tail = U_BoolList(fields->head->escape, NULL);
+            } else {
+                formals_tail->tail = U_BoolList(fields->head->escape, NULL);
+                formals_tail = formals_tail->tail;
+            }
             tail = tail->tail;
         }
         assert(!tail && !fields);
-        Ty_ty body_ty = visitExp(tenv, venv, fundec->body, loop_depth).ty;
+
+        Tr_level lv = Tr_newLevel(attrs.level, Temp_newlabel(), formals);
+
+        Ty_ty body_ty = visitExp(tenv, venv, fundec->body, VisitorAttrs_changeLevel(attrs, lv)).ty;
         if (!isTypeCompat(e->u.fun.result, body_ty)) {
             EM_error(fundec->body->pos, "function body expression type does not match the return value type");
         }
@@ -628,6 +663,7 @@ void SEM_transProg(A_exp exp) {
     Esc_findEscape(exp);
     S_table tenv = E_base_tenv();
     S_table venv = E_base_venv();
+    Tr_level main_level = Tr_newLevel(Tr_outermost(), Temp_namedlabel("main"), NULL);
     int loop_depth = 0;
-    Ty_print(visitExp(tenv, venv, exp, &loop_depth).ty);
+    Ty_print(visitExp(tenv, venv, exp, VisitorAttrs(&loop_depth, main_level)).ty);
 }

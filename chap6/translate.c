@@ -1,21 +1,64 @@
 /*
- * translate.h - translate code to IR
+ * translate.c - translate code to IR
  */
 
-#ifndef TIGER_TRANSLATE
-#define TIGER_TRANSLATE
+#include <translate.h>
+#include <frame.h>
 
-#include <temp.h>
+struct Tr_level_ {
+    Tr_level parent;
+    F_frame frame;
+    Tr_accessList formals;
+};
 
-typedef struct Tr_access_* Tr_access;
-typedef struct Tr_accessList_* Tr_accessList;
-typedef struct Tr_level_* Tr_level;
+struct Tr_access_ {
+    Tr_level level;
+    F_access access;
+};
 
-Tr_accessList Tr_AccessList(Tr_access head, Tr_accessList tail);
+struct Tr_accessList_ {
+    Tr_access head;
+    Tr_accessList tail;
+};
 
-Tr_level Tr_outermost(void);
-Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals);
-Tr_accessList Tr_formals(Tr_level level);
-Tr_access Tr_allocLocal(Tr_level level, bool escape);
+static struct Tr_level_ troutmost = {NULL, NULL};
 
-#endif //TIGER_TRANSLATE
+Tr_access Tr_Access(Tr_level level, F_access access) {
+    Tr_access p = checked_malloc(sizeof(*p));
+    p->level = level;
+    p->access = access;
+    return p;
+}
+
+Tr_accessList Tr_AccessList(Tr_access head, Tr_accessList tail) {
+    Tr_accessList p = checked_malloc(sizeof(*p));
+    p->head = head;
+    p->tail = tail;
+    return p;
+}
+
+Tr_level Tr_outermost() { return &troutmost; }
+
+Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
+    Tr_level p = checked_malloc(sizeof(*p));
+    p->parent = parent;
+    p->frame = F_newFrame(name, U_BoolList(TRUE, formals));
+    p->formals = NULL;
+    Tr_accessList tail = NULL;
+    for (F_accessList f_formals = F_formals(p->frame); f_formals; f_formals = f_formals->tail) {
+        Tr_accessList entry =  Tr_AccessList(Tr_Access(p, f_formals->head), NULL);
+        if (!p->formals) {
+            p->formals = tail = entry;
+        } else {
+            tail->tail = entry;
+            tail = entry;
+        }
+    }
+    return p;
+}
+
+Tr_accessList Tr_formals(Tr_level level) { return level->formals; }
+
+Tr_access Tr_allocLocal(Tr_level level, bool escape) {
+    return Tr_Access(level, F_allocLocal(level->frame, escape));
+}

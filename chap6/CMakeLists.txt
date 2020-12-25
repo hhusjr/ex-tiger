@@ -26,5 +26,6 @@ add_executable(tiger
         temp.c
         mipsframe.c
         escape.c
+        translate.c
         ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS}
         )

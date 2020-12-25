@@ -77,6 +77,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals) {
             frame->formals = tail = entry;
         } else {
             tail->tail = entry;
+            tail = entry;
         }
     }
     return frame;
@@ -88,4 +89,12 @@ F_access F_allocLocal(F_frame f, bool escape) {
     }
 
     return InReg(Temp_newtemp());
+}
+
+Temp_label F_name(F_frame frame) {
+    return frame->name;
+}
+
+F_accessList F_formals(F_frame frame) {
+    return frame->formals;
 }

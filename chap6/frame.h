@@ -20,6 +20,8 @@ struct F_frame_ {
 };
 
 F_frame F_newFrame(Temp_label name, U_boolList formals);
+Temp_label F_name(F_frame frame);
+F_accessList F_formals(F_frame frame);
 
 F_access F_allocLocal(F_frame f, bool escape);
 

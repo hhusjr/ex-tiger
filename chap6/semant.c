@@ -83,7 +83,7 @@ static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs a
 
 static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-static expty visitBreakExp(A_exp exp, const visitorAttrs attrs);
+static expty visitBreakExp(A_exp exp, visitorAttrs attrs);
 
 static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
@@ -391,7 +391,7 @@ static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
     return Expty(NULL, Ty_Void());
 }
 
-static expty visitBreakExp(A_exp exp, const visitorAttrs attrs) {
+static expty visitBreakExp(A_exp exp, visitorAttrs attrs) {
     if (*attrs.loop_depth <= 0) {
         EM_error(exp->pos, "break must be inside a loop");
     }

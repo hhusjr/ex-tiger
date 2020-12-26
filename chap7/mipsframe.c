@@ -28,9 +28,12 @@
  */
 
 #include <frame.h>
+#include <temp.h>
 
-#define ARCH_WORD_SIZE (4)
-#define ARCH_MAXREGARG (4)
+static struct Temp_temp_ f_fp;
+
+const int F_wordSize = 4;
+const int F_maxRegArg = 4;
 
 F_accessList F_AccessList(F_access head, F_accessList tail) {
     F_accessList p = checked_malloc(sizeof(*p));
@@ -66,12 +69,12 @@ F_frame F_newFrame(Temp_label name, U_boolList formals) {
     F_frame frame = checked_malloc(sizeof(*frame));
     frame->formals = NULL;
     F_accessList tail = NULL;
-    int offset = -ARCH_WORD_SIZE;
+    int offset = -F_wordSize;
     int n_reg_alloca = 0;
     for (U_boolList p = formals; p; p = p->tail) {
-        assert(n_reg_alloca <= ARCH_MAXREGARG);
-        bool in_frame = p->head || n_reg_alloca >= ARCH_MAXREGARG;
-        F_accessList entry = F_AccessList(in_frame ? InFrame(offset += ARCH_WORD_SIZE)
+        assert(n_reg_alloca <= F_maxRegArg);
+        bool in_frame = p->head || n_reg_alloca >= F_maxRegArg;
+        F_accessList entry = F_AccessList(in_frame ? InFrame(offset += F_wordSize)
                                                    : (n_reg_alloca++, InReg(Temp_newtemp())), NULL);
         if (!frame->formals) {
             frame->formals = tail = entry;
@@ -85,7 +88,7 @@ F_frame F_newFrame(Temp_label name, U_boolList formals) {
 
 F_access F_allocLocal(F_frame f, bool escape) {
     if (escape) {
-        return InFrame(-(1 + f->n_frame_local++) * ARCH_WORD_SIZE);
+        return InFrame(-(1 + f->n_frame_local++) * F_wordSize);
     }
 
     return InReg(Temp_newtemp());
@@ -97,4 +100,17 @@ Temp_label F_name(F_frame frame) {
 
 F_accessList F_formals(F_frame frame) {
     return frame->formals;
+}
+
+Temp_temp F_FP() {
+    return &f_fp;
+}
+
+T_exp F_exp(F_access access, T_exp fp) {
+    return access->kind == inFrame ? T_Mem(T_Binop(T_plus, fp, T_Const(access->offset))) // inframe
+                                    : T_Temp(access->reg); // inreg
+}
+
+T_exp F_externalCall(string s, T_expList args) {
+    return T_Call(T_Name(Temp_namedlabel(s)), args);
 }

@@ -70,7 +70,7 @@ static expty visitNilExp();
 
 static expty visitIntExp(int val);
 
-static expty visitStringExp();
+static expty visitStringExp(string s);
 
 static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
@@ -94,13 +94,13 @@ static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
 
 static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs);
 
-void visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
+static expty visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
 
 void visitTypeDec(S_table tenv, S_table venv, A_dec dec);
 
 void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
 
-void visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
+static expty visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs);
 
 Ty_ty visitTy(S_table tenv, S_table venv, A_ty ty);
 
@@ -129,7 +129,7 @@ static expty visitExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs)
         case A_intExp:
             return visitIntExp(exp->u.intt);
         case A_stringExp:
-            return visitStringExp();
+            return visitStringExp(exp->u.stringg);
         case A_callExp:
             return visitCallExp(tenv, venv, exp, attrs);
         case A_opExp:
@@ -210,7 +210,7 @@ static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs at
     E_enventry func = requireSym(exp->pos, venv, exp->u.call.func, NULL);
     if (!func || func->kind != E_funEntry) {
         EM_error(exp->pos, "function name undefined or not a function");
-        return Expty(NULL, Ty_Int());
+        return Expty(Tr_const(0), Ty_Int());
     }
 
     A_expList arg = exp->u.call.args;
@@ -218,14 +218,25 @@ static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs at
     Ty_ty result = func->u.fun.result;
     Ty_tyList formal = func->u.fun.formals;
 
+    Tr_expList arg_tr = NULL, arg_tr_tail = NULL;
+
     while (arg && formal) {
+        expty v = visitExp(tenv, venv, arg->head, attrs);
+
         Ty_ty ideal = formal->head;
-        Ty_ty actual = visitExp(tenv, venv, arg->head, attrs).ty;
+        Ty_ty actual = v.ty;
 
         assert(ideal->kind != Ty_nil);
         if (!isTypeCompat(ideal, actual)) {
             EM_error(arg->head->pos, "function parameter type does not match");
-            return Expty(NULL, Ty_Int());
+            return Expty(Tr_const(0), Ty_Int());
+        }
+
+        if (!arg_tr) {
+            arg_tr = arg_tr_tail = Tr_ExpList(v.exp, NULL);
+        } else {
+            arg_tr_tail->tail = Tr_ExpList(v.exp, NULL);;
+            arg_tr_tail = arg_tr_tail->tail;
         }
 
         formal = formal->tail;
@@ -234,10 +245,10 @@ static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs at
 
     if (arg || formal) {
         EM_error(exp->pos, "parameter passed to the function must have same length with formals in definition");
-        return Expty(NULL, Ty_Int());
+        return Expty(Tr_const(0), Ty_Int());
     }
 
-    return Expty(NULL, result);
+    return Expty(Tr_functionCall(exp->u.call.func, func->u.fun.level, attrs.level, arg_tr, result == Ty_Void()), result);
 }
 
 static expty visitNilExp() {
@@ -248,9 +259,8 @@ static expty visitIntExp(int val) {
     return Expty(Tr_const(val), Ty_Int());
 }
 
-static expty visitStringExp() {
-    // TODO: Finish string
-    return Expty(NULL, Ty_String());
+static expty visitStringExp(string s) {
+    return Expty(Tr_string(s), Ty_String());
 }
 
 static Tr_oper opMap(A_oper op) {
@@ -315,6 +325,8 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attr
             if (isTypeCompat(vl.ty, Ty_String()) &&
                 isTypeCompat(vr.ty, Ty_String())) {
                 // TODO: Finish string comparison
+                printf("String comparison operator not implemented\n");
+                assert(0);
                 return Expty(NULL, Ty_Int());
             }
             if (isTypeCompat(vl.ty, Ty_Int()) &&
@@ -352,12 +364,12 @@ static expty visitAssignExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs 
     assert(lhs_t->kind != Ty_nil);
     if (!isTypeCompat(lhs_t, rhs_t)) {
         EM_error(lhs->pos, "lhs and rhs does not have same type");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     if (is_loop_var) {
         EM_error(lhs->pos, "can not assign to loop variable");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     return Expty(Tr_assign(vl.exp, vr.exp), Ty_Void());
@@ -372,7 +384,7 @@ static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attr
 
     if (!isTypeCompat(test_v.ty, Ty_Int())) {
         EM_error(test->pos, "test expression must have Integer type");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     expty then_v = visitExp(tenv, venv, then, attrs);
@@ -381,7 +393,7 @@ static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attr
     if (elsee == NULL) {
         if (!isTypeCompat(then_t, Ty_Void())) {
             EM_error(then->pos, "then expression must be void");
-            return Expty(Tr_const(0), Ty_Void());
+            return Expty(Tr_nop(), Ty_Void());
         }
 
         return Expty(Tr_ifthen(test_v.exp, then_v.exp), Ty_Void());
@@ -392,7 +404,7 @@ static expty visitIfExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attr
 
     if (!isTypeCompat(then_t, else_t)) {
         EM_error(then->pos, "then and else must have same type (or both void)");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     return Expty(Tr_ifthenelse(test_v.exp, then_v.exp, else_v.exp), then_t);
@@ -405,7 +417,7 @@ static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs a
 
     if (!isTypeCompat(test_v.ty, Ty_Int())) {
         EM_error(test->pos, "test expression must have Integer type");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     Temp_label done = Temp_newlabel();
@@ -415,7 +427,7 @@ static expty visitWhileExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs a
 
     if (!isTypeCompat(body_ty, Ty_Void())) {
         EM_error(test->pos, "loop body must be void");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     return Expty(Tr_while(test_v.exp, body_v.exp, done), Ty_Void());
@@ -430,20 +442,20 @@ static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
 
     if (!isTypeCompat(lo_v.ty, Ty_Int())) {
         EM_error(lo->pos, "lower bound of for loop must be Integer");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     if (!isTypeCompat(hi_v.ty, Ty_Int())) {
         EM_error(lo->pos, "upper bound of for loop must be Integer");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
+    Tr_access var = Tr_allocLocal(attrs.level, exp->u.forr.escape);
+
     S_beginScope(venv);
-    S_enter(venv, id, E_LoopVarEntry(Ty_Int()));
+    S_enter(venv, id, E_LoopVarEntry(Ty_Int(), var));
 
     Temp_label done = Temp_newlabel();
-
-    Tr_access var = Tr_allocLocal(attrs.level, exp->u.forr.escape);
 
     expty body_v = visitExp(tenv, venv, body, VisitorAttrs_changeDone(attrs, done));
     Ty_ty body_ty = body_v.ty;
@@ -451,7 +463,7 @@ static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
 
     if (!isTypeCompat(body_ty, Ty_Void())) {
         EM_error(body->pos, "loop body must be void");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
     
     return Expty(Tr_for(var, attrs.level, lo_v.exp, hi_v.exp, body_v.exp, done), Ty_Void());
@@ -479,7 +491,7 @@ static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs a
     Ty_ty actual_ty = actualTy(ty);
     if (actual_ty->kind != Ty_array) {
         EM_error(exp->pos, "array name not defined or not an array");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     A_exp size = exp->u.array.size;
@@ -517,7 +529,7 @@ static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs 
     Ty_ty actual_ty = actualTy(ty);
     if (actual_ty->kind != Ty_record) {
         EM_error(exp->pos, "record name not defined or not a record");
-        return Expty(Tr_const(0), Ty_Void());
+        return Expty(Tr_nop(), Ty_Void());
     }
 
     S_table fieldset = S_empty(); // Map field to initializer
@@ -605,29 +617,36 @@ static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
         }
     }
 
+    Tr_exp init_stm = NULL;
+
     for (A_decList dec_list = exp->u.let.decs; dec_list; dec_list = dec_list->tail) {
         A_dec dec = dec_list->head;
-        visitDec(tenv, venv, dec, attrs);
+        Tr_exp init = visitDec(tenv, venv, dec, attrs).exp;
+        if (!init) {
+            // For functions/types/variable declaration without initialization, skip generate initializer
+            continue;
+        }
+
+        init_stm = init_stm ? Tr_stmtSeq(init_stm, init) : init;
     }
     expty vis_body = visitExp(tenv, venv, exp->u.let.body, attrs);
     S_endScope(venv);
     S_endScope(tenv);
-    return Expty(NULL, vis_body.ty);
+    return Expty(init_stm ? Tr_seq(init_stm, vis_body.exp) : vis_body.exp, vis_body.ty);
 }
 
-void visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
+static expty visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
     switch (dec->kind) {
         case A_functionDec:
             visitFunctionDec(tenv, venv, dec, attrs);
-            return;
+            return Expty(NULL, NULL);
 
         case A_varDec:
-            visitVarDec(tenv, venv, dec, attrs);
-            return;
+            return visitVarDec(tenv, venv, dec, attrs);
 
         case A_typeDec:
             visitTypeDec(tenv, venv, dec);
-            return;
+            return Expty(NULL, NULL);
 
         default:
             assert(0);
@@ -659,7 +678,7 @@ Ty_ty visitTy(S_table tenv, S_table venv, A_ty ty) {
                 if (list_head == NULL) {
                     list_head = list_tail = Ty_FieldList(Ty_Field(field->name, field_type), NULL);
                 } else {
-                    list_tail->tail =  Ty_FieldList(Ty_Field(field->name, field_type), NULL);
+                    list_tail->tail = Ty_FieldList(Ty_Field(field->name, field_type), NULL);
                     list_tail = list_tail->tail;
                 }
             }
@@ -674,18 +693,19 @@ Ty_ty visitTy(S_table tenv, S_table venv, A_ty ty) {
     }
 }
 
-void visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
+static expty visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
     // Allocate local variable
     Tr_access access = Tr_allocLocal(attrs.level, dec->u.var.escape);
 
-    Ty_ty init_type = visitExp(tenv, venv, dec->u.var.init, attrs).ty;
+    expty init = visitExp(tenv, venv, dec->u.var.init, attrs);
+    Ty_ty init_type = init.ty;
     Ty_ty init_type_actual = actualTy(init_type);
     Ty_ty ty;
     if (dec->u.var.typ == NULL) {
         if (init_type_actual->kind == Ty_void || init_type_actual->kind == Ty_nil) {
             EM_error(dec->pos, "variable declaration initializer type error");
             S_enter(venv, dec->u.var.var, E_VarEntry(Ty_Int(), access));
-            return;
+            return Expty(NULL, NULL);
         }
         ty = init_type;
     } else {
@@ -695,10 +715,11 @@ void visitVarDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
     if (!isTypeCompat(ty, init_type_actual)) {
         EM_error(dec->pos, "variable declaration initializer type error");
         S_enter(venv, dec->u.var.var, E_VarEntry(ty, access));
-        return;
+        return Expty(NULL, NULL);
     }
 
     S_enter(venv, dec->u.var.var, E_VarEntry(ty, access));
+    return Expty(Tr_assign(Tr_simpleVar(access, attrs.level), init.exp), ty);
 }
 
 void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs) {
@@ -707,6 +728,7 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
         Ty_ty result = fundec->result ? requireSym(fundec->pos, tenv, fundec->result, Ty_Void()) : Ty_Void();
         assert(result->kind != Ty_nil);
 
+        // Calculate type of each formals
         Ty_tyList head = NULL, tail = NULL;
         for (A_fieldList fields = fundec->params; fields; fields = fields->tail) {
             A_field field = fields->head;
@@ -718,7 +740,23 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
             }
         }
 
-        S_enter(venv, fundec->name, E_FunEntry(head, result));
+        // Convert formal escape info to a U_BoolList
+        A_fieldList fields = fundec->params;
+        U_boolList formals = NULL, formals_tail = NULL;
+        for (; fields; fields = fields->tail) {
+            if (!formals) {
+                formals = formals_tail = U_BoolList(fields->head->escape, NULL);
+            } else {
+                formals_tail->tail = U_BoolList(fields->head->escape, NULL);
+                formals_tail = formals_tail->tail;
+            }
+        }
+
+        // Create activation record
+        Tr_level lv = Tr_newLevel(attrs.level, Temp_newlabel(), formals);
+
+        // Put it to symbol table
+        S_enter(venv, fundec->name, E_FunEntry(head, result, lv));
     }
 
     for (A_fundecList fundecs = dec->u.function; fundecs; fundecs = fundecs->tail) {
@@ -727,37 +765,29 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
         E_enventry e = S_look(venv, fundec->name);
         assert(e && e->kind == E_funEntry);
 
-        Ty_tyList tail = e->u.fun.formals;
-        S_beginScope(venv);
-        A_fieldList fields = fundec->params;
-        U_boolList formals = NULL, formals_tail = NULL;
-        for (; fields; fields = fields->tail) {
-            assert(tail);
-            if (!formals) {
-                formals = formals_tail = U_BoolList(fields->head->escape, NULL);
-            } else {
-                formals_tail->tail = U_BoolList(fields->head->escape, NULL);
-                formals_tail = formals_tail->tail;
-            }
-            tail = tail->tail;
-        }
-        assert(!tail && !fields);
-
-        Tr_level lv = Tr_newLevel(attrs.level, Temp_newlabel(), formals);
-
-        Tr_accessList formal_access = Tr_formals(lv);
+        // Put each formals to symbol table (their types, names, and accesses)
+        Tr_accessList formal_access = Tr_formals(e->u.fun.level);
+        A_fieldList fields;
+        Ty_tyList p = e->u.fun.formals;
         for (fields = fundec->params; fields; fields = fields->tail) {
-            assert(formal_access);
-            S_enter(venv, fields->head->name, E_VarEntry(tail->head, formal_access->head));
+            assert(formal_access && p);
+            S_enter(venv, fields->head->name, E_VarEntry(p->head, formal_access->head));
             formal_access = formal_access->tail;
+            p = p->tail;
         }
-        assert(!formal_access && !fields);
+        assert(!formal_access && !fields && !p);
 
-        Ty_ty body_ty = visitExp(tenv, venv, fundec->body, VisitorAttrs_changeLevel(attrs, lv)).ty;
+        // Calculate function body
+        S_beginScope(venv);
+        expty body_v = visitExp(tenv, venv, fundec->body, VisitorAttrs_changeLevel(attrs, e->u.fun.level));
+        Ty_ty body_ty = body_v.ty;
         if (!isTypeCompat(e->u.fun.result, body_ty)) {
             EM_error(fundec->body->pos, "function body expression type does not match the return value type");
         }
         S_endScope(venv);
+
+        // Proc Entry Exit
+        Tr_procEntryExit(e->u.fun.level, body_v.exp, formal_access);
     }
 }
 
@@ -766,5 +796,5 @@ void SEM_transProg(A_exp exp) {
     S_table tenv = E_base_tenv();
     S_table venv = E_base_venv();
     Tr_level main_level = Tr_newLevel(Tr_outermost(), Temp_namedlabel("main"), NULL);
-    Ty_print(visitExp(tenv, venv, exp, VisitorAttrs(main_level, NULL)).ty);
+    Tr_procEntryExit(main_level, visitExp(tenv, venv, exp, VisitorAttrs(main_level, NULL)).exp, NULL);
 }

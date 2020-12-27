@@ -29,8 +29,9 @@
 
 #include <frame.h>
 #include <temp.h>
+#include "frame.h"
 
-static struct Temp_temp_ f_fp;
+static struct Temp_temp_ f_fp, f_rv;
 
 const int F_wordSize = 4;
 const int F_maxRegArg = 4;
@@ -67,6 +68,7 @@ static F_access InReg(Temp_temp reg) {
 
 F_frame F_newFrame(Temp_label name, U_boolList formals) {
     F_frame frame = checked_malloc(sizeof(*frame));
+    frame->name = name;
     frame->formals = NULL;
     F_accessList tail = NULL;
     int offset = -F_wordSize;
@@ -106,6 +108,10 @@ Temp_temp F_FP() {
     return &f_fp;
 }
 
+Temp_temp F_RV() {
+    return &f_rv;
+}
+
 T_exp F_exp(F_access access, T_exp fp) {
     return access->kind == inFrame ? T_Mem(T_Binop(T_plus, fp, T_Const(access->offset))) // inframe
                                     : T_Temp(access->reg); // inreg
@@ -113,4 +119,32 @@ T_exp F_exp(F_access access, T_exp fp) {
 
 T_exp F_externalCall(string s, T_expList args) {
     return T_Call(T_Name(Temp_namedlabel(s)), args);
+}
+
+F_frag F_StringFrag(Temp_label label, string str) {
+    F_frag p = checked_malloc(sizeof(*p));
+    p->kind = F_stringFrag;
+    p->u.stringg.label = label;
+    p->u.stringg.str = str;
+    return p;
+}
+
+F_frag F_ProcFrag(T_stm body, F_frame frame) {
+    F_frag p = checked_malloc(sizeof(*p));
+    p->kind = F_procFrag;
+    p->u.proc.body = body;
+    p->u.proc.frame = frame;
+    return p;
+}
+
+F_fragList F_FragList(F_frag head, F_fragList tail) {
+    F_fragList p = checked_malloc(sizeof(*p));
+    p->head = head;
+    p->tail = tail;
+    return p;
+}
+
+T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
+    // TODO: Finish this
+    return stm;
 }

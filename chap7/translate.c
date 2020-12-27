@@ -8,6 +8,18 @@
 
 #define SL_OFFSET (-4)
 
+static F_fragList frags = NULL, frags_tail = NULL;
+
+static void insertFrag(F_frag frag) {
+    F_fragList node = F_FragList(frag, NULL);
+    if (!frags) {
+        frags = frags_tail = node;
+    } else {
+        frags_tail->tail = node;
+        frags_tail = node;
+    }
+}
+
 static patchList PatchList(Temp_label *head, patchList tail) {
     patchList p = checked_malloc(sizeof(*p));
     p->head = head;
@@ -157,7 +169,7 @@ Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
     p->formals = NULL;
     Tr_accessList tail = NULL;
     for (F_accessList f_formals = F_formals(p->frame); f_formals; f_formals = f_formals->tail) {
-        Tr_accessList entry =  Tr_AccessList(Tr_Access(p, f_formals->head), NULL);
+        Tr_accessList entry = Tr_AccessList(Tr_Access(p, f_formals->head), NULL);
         if (!p->formals) {
             p->formals = tail = entry;
         } else {
@@ -168,7 +180,9 @@ Tr_level Tr_newLevel(Tr_level parent, Temp_label name, U_boolList formals) {
     return p;
 }
 
-Tr_accessList Tr_formals(Tr_level level) { return level->formals; }
+Tr_accessList Tr_formals(Tr_level level) {
+    return level->formals->tail; // Skip static link
+}
 
 Tr_access Tr_allocLocal(Tr_level level, bool escape) {
     return Tr_Access(level, F_allocLocal(level->frame, escape));
@@ -179,6 +193,7 @@ Tr_exp Tr_simpleVar(Tr_access access, Tr_level cur_level) {
     while (cur_level != access->level) {
         T_exp sl = T_Binop(T_plus, real_fp, T_Const(SL_OFFSET));
         real_fp = T_Mem(sl);
+        cur_level = cur_level->parent;
     }
     return Tr_Ex(F_exp(access->access, real_fp));
 }
@@ -375,8 +390,27 @@ Tr_exp Tr_for(Tr_access var, Tr_level cur_level, Tr_exp lo, Tr_exp hi, Tr_exp bo
                                             T_Seq(T_Jump(T_Name(enter_lbl), Temp_LabelList(enter_lbl, NULL)), T_Label(done))))))));
 }
 
-Tr_exp Tr_functionCall(Tr_level callee, Tr_level caller, Tr_expList args) {
+Tr_exp Tr_functionCall(S_symbol name, Tr_level callee, Tr_level caller, Tr_expList args, bool is_proc) {
     Tr_level p;
+
+    // args
+    T_expList converted_args_tail, converted_args;
+    converted_args = converted_args_tail = NULL;
+    for (; args; args = args->tail) {
+        T_expList node = T_ExpList(convertToEx(args->head), NULL);
+
+        if (!converted_args) {
+            converted_args = converted_args_tail = node;
+        } else {
+            converted_args_tail->tail = node;
+            converted_args_tail = node;
+        }
+    }
+
+    if (!callee) {
+        // If no level, then it must be a intrinsic function, without static link
+        return Tr_Ex(F_externalCall(name->name, converted_args));
+    }
 
     // calculate static link first
     int callee_depth = 0, caller_depth = 0;
@@ -408,15 +442,8 @@ Tr_exp Tr_functionCall(Tr_level callee, Tr_level caller, Tr_expList args) {
         sl = T_Mem(T_Binop(T_plus, sl, T_Const(SL_OFFSET)));
     }
 
-    // args
-    T_expList converted_args_tail, converted_args;
-    converted_args = converted_args_tail = T_ExpList(sl, NULL);
-    for (; args; args = args->tail) {
-        converted_args_tail->tail = T_ExpList(convertToEx(args->head), NULL);
-        converted_args_tail = converted_args_tail->tail;
-    }
-
-    return Tr_Ex(T_Call(T_Name(F_name(callee->frame)), converted_args));
+    T_exp call = T_Call(T_Name(F_name(callee->frame)), T_ExpList(sl, converted_args));
+    return !is_proc ? Tr_Ex(call) : Tr_Nx(T_Exp(call));
 }
 
 Tr_exp Tr_assign(Tr_exp lhs, Tr_exp rhs) {
@@ -427,10 +454,32 @@ Tr_exp Tr_const(int n) {
     return Tr_Ex(T_Const(n));
 }
 
+Tr_exp Tr_nop() {
+    return Tr_Nx(T_Exp(T_Const(0)));
+}
+
+Tr_exp Tr_string(string s) {
+    Temp_label label = Temp_newlabel();
+    insertFrag(F_StringFrag(label, s));
+    return Tr_Ex(T_Name(label));
+}
+
 Tr_exp Tr_break(Temp_label done) {
     return Tr_Nx(T_Jump(T_Name(done), Temp_LabelList(done, NULL)));
 }
 
 Tr_exp Tr_seq(Tr_exp stm, Tr_exp res) {
     return Tr_Ex(T_Eseq(convertToNx(stm), convertToEx(res)));
+}
+
+Tr_exp Tr_stmtSeq(Tr_exp left, Tr_exp right) {
+    return Tr_Nx(T_Seq(convertToNx(left), convertToNx(right)));
+}
+
+F_fragList Tr_getResult() {
+    return frags;
+}
+
+void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals) {
+    insertFrag(F_ProcFrag(T_Move(T_Temp(F_RV()), convertToEx(body)), level->frame));
 }

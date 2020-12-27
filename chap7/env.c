@@ -11,19 +11,18 @@ E_enventry E_VarEntry(Ty_ty ty, Tr_access access) {
     return p;
 }
 
-E_enventry E_LoopVarEntry(Ty_ty ty) {
-    E_enventry p = checked_malloc(sizeof(*p));
-    p->kind = E_varEntry;
-    p->u.var.ty = ty;
+E_enventry E_LoopVarEntry(Ty_ty ty, Tr_access access) {
+    E_enventry p = E_VarEntry(ty, access);
     p->u.var.is_loop_var = TRUE;
     return p;
 }
 
-E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result) {
+E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result, Tr_level level) {
     E_enventry p = checked_malloc(sizeof(*p));
     p->kind = E_funEntry;
     p->u.fun.formals = formals;
     p->u.fun.result = result;
+    p->u.fun.level = level;
     return p;
 }
 
@@ -44,7 +43,7 @@ S_table E_base_tenv() {
 
 S_table E_base_venv() {
     S_table t = S_empty();
-    S_enter(t, S_Symbol("print"), E_FunEntry(Ty_TyList(Ty_String(), NULL), Ty_Void()));
+    S_enter(t, S_Symbol("print"), E_FunEntry(Ty_TyList(Ty_String(), NULL), Ty_Void(), NULL));
     return t;
 }
 

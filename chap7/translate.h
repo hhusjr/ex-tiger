@@ -76,7 +76,7 @@ struct Tr_expList_ {
 };
 
 Tr_exp Tr_assign(Tr_exp lhs, Tr_exp rhs);
-Tr_exp Tr_functionCall(Tr_level callee, Tr_level caller, Tr_expList args);
+Tr_exp Tr_functionCall(S_symbol name, Tr_level callee, Tr_level caller, Tr_expList args, bool is_proc);
 Tr_exp Tr_for(Tr_access var, Tr_level cur_level, Tr_exp lo, Tr_exp hi, Tr_exp body, Temp_label done);
 Tr_exp Tr_while(Tr_exp test, Tr_exp body, Temp_label done);
 Tr_exp Tr_newArray(Tr_exp n, Tr_exp initializer);
@@ -86,9 +86,15 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee);
 Tr_exp Tr_op(Tr_oper op, Tr_exp l, Tr_exp r);
 Tr_exp Tr_fieldVar(Tr_exp var, int field_idx);
 Tr_exp Tr_subscriptVar(Tr_exp var, Tr_exp idx);
+Tr_exp Tr_nop();
 Tr_exp Tr_simpleVar(Tr_access access, Tr_level cur_level);
 Tr_exp Tr_const(int n);
+Tr_exp Tr_string(string s);
 Tr_exp Tr_break(Temp_label done);
+Tr_exp Tr_stmtSeq(Tr_exp left, Tr_exp right);
 Tr_exp Tr_seq(Tr_exp stm, Tr_exp res);
+
+void Tr_procEntryExit(Tr_level level, Tr_exp body, Tr_accessList formals);
+F_fragList Tr_getResult();
 
 #endif //TIGER_TRANSLATE

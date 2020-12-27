@@ -27,6 +27,7 @@ F_accessList F_formals(F_frame frame);
 F_access F_allocLocal(F_frame f, bool escape);
 
 Temp_temp F_FP();
+Temp_temp F_RV();
 extern const int F_wordSize;
 extern const int F_maxRegArg;
 
@@ -34,6 +35,37 @@ T_exp F_exp(F_access access, T_exp fp);
 
 T_exp F_externalCall(string s, T_expList args);
 
+typedef struct F_frag_ *F_frag;
+struct F_frag_ {
+    enum {
+        F_stringFrag, F_procFrag
+    } kind;
 
+    union {
+        struct {
+            Temp_label label;
+            string str;
+        } stringg;
+
+        struct {
+            T_stm body;
+            F_frame frame;
+        } proc;
+    } u;
+};
+
+F_frag F_StringFrag(Temp_label label, string str);
+
+F_frag F_ProcFrag(T_stm body, F_frame frame);
+
+typedef struct F_fragList_ *F_fragList;
+struct F_fragList_ {
+    F_frag head;
+    F_fragList tail;
+};
+
+T_stm F_procEntryExit1(F_frame frame, T_stm stm);
+
+F_fragList F_FragList(F_frag head, F_fragList tail);
 
 #endif //TIGER_FRAME

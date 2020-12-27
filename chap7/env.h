@@ -20,6 +20,7 @@ struct E_enventry_ {
         struct {
             Ty_tyList formals;
             Ty_ty result;
+            Tr_level level;
         } fun;
         struct {
             int level;
@@ -30,9 +31,9 @@ struct E_enventry_ {
 
 E_enventry E_VarEntry(Ty_ty ty, Tr_access access);
 
-E_enventry E_LoopVarEntry(Ty_ty ty);
+E_enventry E_LoopVarEntry(Ty_ty ty, Tr_access access);
 
-E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result);
+E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result, Tr_level level);
 
 E_enventry E_EscapeEntry(int level, bool* target);
 

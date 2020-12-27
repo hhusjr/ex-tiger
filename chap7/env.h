@@ -1,8 +1,9 @@
-#include "symbol.h"
-#include "types.h"
-
 #ifndef TIGER_ENV
 #define TIGER_ENV
+
+#include "symbol.h"
+#include "types.h"
+#include <translate.h>
 
 typedef struct E_enventry_ *E_enventry;
 
@@ -14,6 +15,7 @@ struct E_enventry_ {
         struct {
             Ty_ty ty;
             bool is_loop_var;
+            Tr_access access;
         } var;
         struct {
             Ty_tyList formals;
@@ -26,7 +28,7 @@ struct E_enventry_ {
     } u;
 };
 
-E_enventry E_VarEntry(Ty_ty ty);
+E_enventry E_VarEntry(Ty_ty ty, Tr_access access);
 
 E_enventry E_LoopVarEntry(Ty_ty ty);
 

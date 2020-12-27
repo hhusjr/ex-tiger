@@ -2,10 +2,11 @@
 #include "util.h"
 #include <stdlib.h>
 
-E_enventry E_VarEntry(Ty_ty ty) {
+E_enventry E_VarEntry(Ty_ty ty, Tr_access access) {
     E_enventry p = checked_malloc(sizeof(*p));
     p->kind = E_varEntry;
     p->u.var.ty = ty;
+    p->u.var.access = access;
     p->u.var.is_loop_var = FALSE;
     return p;
 }

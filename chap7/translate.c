@@ -8,35 +8,6 @@
 
 #define SL_OFFSET (-4)
 
-struct Tr_level_ {
-    Tr_level parent;
-    F_frame frame;
-    Tr_accessList formals;
-};
-
-struct Tr_access_ {
-    Tr_level level;
-    F_access access;
-};
-
-struct Tr_accessList_ {
-    Tr_access head;
-    Tr_accessList tail;
-};
-
-typedef struct patchList_* patchList;
-typedef struct Cx_ Cx;
-
-struct Cx_ {
-    patchList trues, falses;
-    T_stm stm;
-};
-
-struct patchList_ {
-    Temp_label *head;
-    patchList tail;
-};
-
 static patchList PatchList(Temp_label *head, patchList tail) {
     patchList p = checked_malloc(sizeof(*p));
     p->head = head;
@@ -69,23 +40,6 @@ static patchList joinPatch(patchList p1, patchList p2) {
     }
     return res;
 }
-
-struct Tr_exp_ {
-    enum {
-        Tr_ex, Tr_nx, Tr_cx
-    } kind;
-
-    union {
-        T_exp ex;
-        T_stm nx;
-        Cx cx;
-    } u;
-};
-
-struct Tr_expList_ {
-    Tr_exp head;
-    Tr_expList tail;
-};
 
 Tr_expList Tr_ExpList(Tr_exp head, Tr_expList tail) {
     Tr_expList p = checked_malloc(sizeof(*p));
@@ -358,7 +312,7 @@ Tr_exp Tr_ifthen(Tr_exp test, Tr_exp then) {
     return Tr_Nx(T_Seq(cx.stm, T_Seq(T_Label(t), T_Seq(convertToNx(then), T_Label(f)))));
 }
 
-Tr_exp Tr_newField(int n_field, Tr_expList initializers) {
+Tr_exp Tr_newRecord(int n_field, Tr_expList initializers) {
     Temp_temp r = Temp_newtemp();
     T_stm alloca = T_Move(T_Temp(r),
                           F_externalCall("malloc",
@@ -463,4 +417,20 @@ Tr_exp Tr_functionCall(Tr_level callee, Tr_level caller, Tr_expList args) {
     }
 
     return Tr_Ex(T_Call(T_Name(F_name(callee->frame)), converted_args));
+}
+
+Tr_exp Tr_assign(Tr_exp lhs, Tr_exp rhs) {
+    return Tr_Nx(T_Move(convertToEx(lhs), convertToEx(rhs)));
+}
+
+Tr_exp Tr_const(int n) {
+    return Tr_Ex(T_Const(n));
+}
+
+Tr_exp Tr_break(Temp_label done) {
+    return Tr_Nx(T_Jump(T_Name(done), Temp_LabelList(done, NULL)));
+}
+
+Tr_exp Tr_seq(Tr_exp stm, Tr_exp res) {
+    return Tr_Ex(T_Eseq(convertToNx(stm), convertToEx(res)));
 }

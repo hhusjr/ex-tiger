@@ -44,6 +44,9 @@ S_table E_base_tenv() {
 S_table E_base_venv() {
     S_table t = S_empty();
     S_enter(t, S_Symbol("print"), E_FunEntry(Ty_TyList(Ty_String(), NULL), Ty_Void(), NULL));
+    S_enter(t, S_Symbol("getchar"), E_FunEntry(NULL, Ty_String(), NULL));
+    S_enter(t, S_Symbol("ord"), E_FunEntry(Ty_TyList(Ty_String(), NULL), Ty_Int(), NULL));
+    S_enter(t, S_Symbol("chr"), E_FunEntry(Ty_TyList(Ty_Int(), NULL), Ty_String(), NULL));
     return t;
 }
 

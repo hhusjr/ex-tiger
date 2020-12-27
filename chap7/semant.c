@@ -477,6 +477,10 @@ static expty visitBreakExp(A_exp exp, visitorAttrs attrs) {
 }
 
 static expty visitSeqExp(S_table tenv, S_table venv, A_expList exps, visitorAttrs attrs) {
+    if (!exps) {
+        return Expty(Tr_nop(), Ty_Void());
+    }
+
     expty stm_v = visitExp(tenv, venv, exps->head, attrs);
     if (!exps->tail) {
         return stm_v;
@@ -525,7 +529,7 @@ fieldAndInitializer FieldAndInitializer(Ty_field field, Tr_exp initializer) {
 }
 
 static expty visitRecordExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
-    Ty_ty ty = requireSym(exp->pos, tenv, exp->u.record.typ, NULL);
+    Ty_ty ty = requireSym(exp->pos, tenv, exp->u.record.typ, Ty_Void());
     Ty_ty actual_ty = actualTy(ty);
     if (actual_ty->kind != Ty_record) {
         EM_error(exp->pos, "record name not defined or not a record");
@@ -765,7 +769,11 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
         E_enventry e = S_look(venv, fundec->name);
         assert(e && e->kind == E_funEntry);
 
+        // Calculate function body
+        S_beginScope(venv);
+
         // Put each formals to symbol table (their types, names, and accesses)
+        // ATTENTION: Only in the function scope
         Tr_accessList formal_access = Tr_formals(e->u.fun.level);
         A_fieldList fields;
         Ty_tyList p = e->u.fun.formals;
@@ -777,8 +785,6 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
         }
         assert(!formal_access && !fields && !p);
 
-        // Calculate function body
-        S_beginScope(venv);
         expty body_v = visitExp(tenv, venv, fundec->body, VisitorAttrs_changeLevel(attrs, e->u.fun.level));
         Ty_ty body_ty = body_v.ty;
         if (!isTypeCompat(e->u.fun.result, body_ty)) {

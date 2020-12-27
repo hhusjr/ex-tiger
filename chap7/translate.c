@@ -296,12 +296,8 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
                                                                  T_Temp(r)))))))));
     }
 
-    assert(
-            (then->kind == Tr_ex && elsee->kind == Tr_cx)
-            || (then->kind == Tr_cx && elsee->kind == Tr_ex)
-            || (then->kind == Tr_cx && elsee->kind == Tr_cx)
-            );
     // Condition3: Both convert to cx
+    // TODO: Make it more efficient
     Cx then_c = convertToCx(then), elses_c = convertToCx(elsee);
     Temp_label t = Temp_newlabel(), f = Temp_newlabel(), conj = Temp_newlabel();
     doPatch(cx.trues, t);
@@ -347,6 +343,7 @@ Tr_exp Tr_newRecord(int n_field, Tr_expList initializers) {
 
         cur = cur->tail;
     }
+    seq_tail->u.SEQ.right = convertToNx(Tr_nop());
     assert(!cur);
     return Tr_Ex(T_Eseq(seq, T_Temp(r)));
 }

@@ -350,6 +350,14 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
                         stm);
 }
 
+Tr_exp Tr_ifthen(Tr_exp test, Tr_exp then) {
+    Cx cx = convertToCx(test);
+    Temp_label t = Temp_newlabel(), f = Temp_newlabel();
+    doPatch(cx.trues, t);
+    doPatch(cx.falses, f);
+    return Tr_Nx(T_Seq(cx.stm, T_Seq(T_Label(t), T_Seq(convertToNx(then), T_Label(f)))));
+}
+
 Tr_exp Tr_newField(int n_field, Tr_expList initializers) {
     Temp_temp r = Temp_newtemp();
     T_stm alloca = T_Move(T_Temp(r),
@@ -388,6 +396,71 @@ Tr_exp Tr_newArray(Tr_exp n, Tr_exp initializer) {
     return Tr_Ex(T_Eseq(T_Seq(calc_size, T_Seq(alloca, T_Exp(init))), T_Temp(r)));
 }
 
-Tr_exp Tr_while(Temp_label done) {
+Tr_exp Tr_while(Tr_exp test, Tr_exp body, Temp_label done) {
+    Temp_label test_lbl = Temp_newlabel();
+    Temp_label continue_lbl = Temp_newlabel();
+    Cx test_cx = convertToCx(test);
+    doPatch(test_cx.trues, continue_lbl);
+    doPatch(test_cx.falses, done);
+    return Tr_Nx(T_Seq(T_Label(test_lbl),
+            T_Seq(test_cx.stm,
+                    T_Seq(T_Label(continue_lbl),
+                            T_Seq(convertToNx(body),
+                                    T_Seq(T_Jump(T_Name(test_lbl), Temp_LabelList(test_lbl, NULL)), T_Label(done)))))));
+}
 
+Tr_exp Tr_for(Tr_access var, Tr_level cur_level, Tr_exp lo, Tr_exp hi, Tr_exp body, Temp_label done) {
+    Temp_label for_loop = Temp_newlabel();
+    Temp_label enter_lbl = Temp_newlabel();
+    T_exp loop_var = convertToEx(Tr_simpleVar(var, cur_level));
+    return Tr_Nx(T_Seq(T_Label(for_loop),
+            T_Seq(T_Move(loop_var, convertToEx(lo)),
+                    T_Seq(T_Cjump(T_le, loop_var, convertToEx(hi), enter_lbl, done),
+                            T_Seq(T_Label(enter_lbl),
+                                    T_Seq(convertToNx(body),
+                                            T_Seq(T_Jump(T_Name(enter_lbl), Temp_LabelList(enter_lbl, NULL)), T_Label(done))))))));
+}
+
+Tr_exp Tr_functionCall(Tr_level callee, Tr_level caller, Tr_expList args) {
+    Tr_level p;
+
+    // calculate static link first
+    int callee_depth = 0, caller_depth = 0;
+    p = callee;
+    while (p) {
+        callee_depth++;
+        p = p->parent;
+    }
+    p = caller;
+    while (p) {
+        caller_depth++;
+        p = p->parent;
+    }
+
+    T_exp sl = T_Temp(F_FP());
+
+    /*
+     * To calculate the FP of the parent level of callee
+     *
+     * 1. fun C() { fun callee() { ... fun caller() { callee() } ... } } -- callee_depth < caller_depth
+     * 2. fun C() { fun callee(); fun caller() { callee() } } -- callee_depth = caller_depth
+     * 3. fun C() { fun caller() { fun callee() {} callee() } } -- callee_depth = caller_depth + 1
+     *
+     * so, callee_depth <= caller_depth + 1
+     */
+    assert(callee_depth <= caller_depth + 1);
+
+    for (int i = 0; i < caller_depth - callee_depth + 1; i++) {
+        sl = T_Mem(T_Binop(T_plus, sl, T_Const(SL_OFFSET)));
+    }
+
+    // args
+    T_expList converted_args_tail, converted_args;
+    converted_args = converted_args_tail = T_ExpList(sl, NULL);
+    for (; args; args = args->tail) {
+        converted_args_tail->tail = T_ExpList(convertToEx(args->head), NULL);
+        converted_args_tail = converted_args_tail->tail;
+    }
+
+    return Tr_Ex(T_Call(T_Name(F_name(callee->frame)), converted_args));
 }

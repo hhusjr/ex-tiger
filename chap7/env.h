@@ -24,7 +24,7 @@ struct E_enventry_ {
         } fun;
         struct {
             int level;
-            bool* target;
+            bool *target;
         } escape;
     } u;
 };
@@ -35,7 +35,7 @@ E_enventry E_LoopVarEntry(Ty_ty ty, Tr_access access);
 
 E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result, Tr_level level);
 
-E_enventry E_EscapeEntry(int level, bool* target);
+E_enventry E_EscapeEntry(int level, bool *target);
 
 S_table E_base_tenv();
 

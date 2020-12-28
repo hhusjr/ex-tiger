@@ -8,7 +8,9 @@
 #include <env.h>
 
 static void visitExp(S_table eenv, int level, A_exp exp);
+
 static void visitDec(S_table eenv, int level, A_dec dec);
+
 static void visitVar(S_table eenv, int level, A_var var);
 
 static void visitDec(S_table eenv, int level, A_dec dec) {
@@ -31,7 +33,7 @@ static void visitDec(S_table eenv, int level, A_dec dec) {
             S_enter(eenv, dec->u.var.var, E_EscapeEntry(level, &(dec->u.var.escape)));
             break;
 
-        default: ;
+        default:;
     }
 }
 
@@ -106,7 +108,7 @@ static void visitExp(S_table eenv, int level, A_exp exp) {
             visitExp(eenv, level, exp->u.array.init);
             break;
 
-        default: ;
+        default:;
     }
 }
 

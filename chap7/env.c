@@ -26,7 +26,7 @@ E_enventry E_FunEntry(Ty_tyList formals, Ty_ty result, Tr_level level) {
     return p;
 }
 
-E_enventry E_EscapeEntry(int level, bool* target) {
+E_enventry E_EscapeEntry(int level, bool *target) {
     E_enventry p = checked_malloc(sizeof(*p));
     p->kind = E_escapeEntry;
     p->u.escape.level = level;

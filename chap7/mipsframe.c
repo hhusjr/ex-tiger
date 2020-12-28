@@ -44,7 +44,9 @@ F_accessList F_AccessList(F_access head, F_accessList tail) {
 }
 
 struct F_access_ {
-    enum {inFrame, inReg} kind;
+    enum {
+        inFrame, inReg
+    } kind;
 
     union {
         int offset;         // inFrame
@@ -114,7 +116,7 @@ Temp_temp F_RV() {
 
 T_exp F_exp(F_access access, T_exp fp) {
     return access->kind == inFrame ? T_Mem(T_Binop(T_plus, fp, T_Const(access->offset))) // inframe
-                                    : T_Temp(access->reg); // inreg
+                                   : T_Temp(access->reg); // inreg
 }
 
 T_exp F_externalCall(string s, T_expList args) {

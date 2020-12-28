@@ -97,13 +97,14 @@ static T_exp convertToEx(Tr_exp exp) {
             doPatch(exp->u.cx.trues, t);
             doPatch(exp->u.cx.falses, f);
             return T_Eseq(T_Move(T_Temp(r), T_Const(1)),     // MOVE r 1
-                    T_Eseq(exp->u.cx.stm,                    // Generate statement
-                     T_Eseq(T_Label(f),                      // f:
-                      T_Eseq(T_Move(T_Temp(r), T_Const(0)),  // MOVE r 0
-                       T_Eseq(T_Label(t), T_Temp(r))))));    // t: r
+                          T_Eseq(exp->u.cx.stm,                    // Generate statement
+                                 T_Eseq(T_Label(f),                      // f:
+                                        T_Eseq(T_Move(T_Temp(r), T_Const(0)),  // MOVE r 0
+                                               T_Eseq(T_Label(t), T_Temp(r))))));    // t: r
         }
 
-        default: assert(0);
+        default:
+            assert(0);
     }
 }
 
@@ -122,7 +123,8 @@ static T_stm convertToNx(Tr_exp exp) {
             return T_Seq(exp->u.cx.stm, T_Label(all));
         }
 
-        default: assert(0);
+        default:
+            assert(0);
     }
 }
 
@@ -140,7 +142,8 @@ static Cx convertToCx(Tr_exp exp) {
         case Tr_cx:
             return exp->u.cx;
 
-        default: assert(0);
+        default:
+            assert(0);
     }
 }
 
@@ -203,9 +206,9 @@ Tr_exp Tr_subscriptVar(Tr_exp var, Tr_exp idx) {
     T_exp varex = convertToEx(var);
     return Tr_Ex(
             T_Mem(T_Binop(T_plus, varex,
-                    T_Binop(T_mul, ex, T_Const(F_wordSize))
-                    ))
-            );
+                          T_Binop(T_mul, ex, T_Const(F_wordSize))
+            ))
+    );
 }
 
 Tr_exp Tr_fieldVar(Tr_exp var, int field_idx) {
@@ -259,7 +262,8 @@ Tr_exp Tr_op(Tr_oper op, Tr_exp l, Tr_exp r) {
             return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
         }
 
-        default: assert(0);
+        default:
+            assert(0);
     }
 }
 
@@ -272,12 +276,12 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
         doPatch(cx.trues, t);
         doPatch(cx.falses, f);
         return Tr_Nx(T_Seq(cx.stm,
-                T_Seq(T_Label(t),
-                        T_Seq(convertToNx(then),
-                                T_Seq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
-                                        T_Seq(T_Label(f),
-                                                T_Seq(convertToNx(elsee),
-                                                        T_Label(conj))))))));
+                           T_Seq(T_Label(t),
+                                 T_Seq(convertToNx(then),
+                                       T_Seq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
+                                             T_Seq(T_Label(f),
+                                                   T_Seq(convertToNx(elsee),
+                                                         T_Label(conj))))))));
     }
 
     // Condition2: Both ex (with return value)
@@ -287,13 +291,13 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
         doPatch(cx.falses, f);
         Temp_temp r = Temp_newtemp();
         return Tr_Ex(T_Eseq(cx.stm,
-                           T_Eseq(T_Label(t),
-                                 T_Eseq(T_Move(T_Temp(r), convertToEx(then)),
-                                       T_Eseq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
-                                             T_Eseq(T_Label(f),
-                                                   T_Eseq(T_Move(T_Temp(r), convertToEx(elsee)),
-                                                         T_Eseq(T_Label(conj),
-                                                                 T_Temp(r)))))))));
+                            T_Eseq(T_Label(t),
+                                   T_Eseq(T_Move(T_Temp(r), convertToEx(then)),
+                                          T_Eseq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
+                                                 T_Eseq(T_Label(f),
+                                                        T_Eseq(T_Move(T_Temp(r), convertToEx(elsee)),
+                                                               T_Eseq(T_Label(conj),
+                                                                      T_Temp(r)))))))));
     }
 
     // Condition3: Both convert to cx
@@ -311,8 +315,8 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
                                                     T_Label(conj)))))));
 
     return Tr_Cx(joinPatch(then_c.trues, elses_c.trues),
-                    joinPatch(then_c.falses, elses_c.falses),
-                        stm);
+                 joinPatch(then_c.falses, elses_c.falses),
+                 stm);
 }
 
 Tr_exp Tr_ifthen(Tr_exp test, Tr_exp then) {
@@ -338,7 +342,8 @@ Tr_exp Tr_newRecord(int n_field, Tr_expList initializers) {
         assert(cur);
 
         T_stm field_init = T_Move(T_Mem(T_Temp(p)), convertToEx(cur->head));
-        seq_tail->u.SEQ.right = T_Seq(T_Seq(field_init, T_Move(T_Temp(p), T_Binop(T_plus, T_Temp(p), T_Const(F_wordSize)))), NULL);
+        seq_tail->u.SEQ.right = T_Seq(
+                T_Seq(field_init, T_Move(T_Temp(p), T_Binop(T_plus, T_Temp(p), T_Const(F_wordSize)))), NULL);
         seq_tail = seq_tail->u.SEQ.right;
 
         cur = cur->tail;
@@ -369,10 +374,11 @@ Tr_exp Tr_while(Tr_exp test, Tr_exp body, Temp_label done) {
     doPatch(test_cx.trues, continue_lbl);
     doPatch(test_cx.falses, done);
     return Tr_Nx(T_Seq(T_Label(test_lbl),
-            T_Seq(test_cx.stm,
-                    T_Seq(T_Label(continue_lbl),
-                            T_Seq(convertToNx(body),
-                                    T_Seq(T_Jump(T_Name(test_lbl), Temp_LabelList(test_lbl, NULL)), T_Label(done)))))));
+                       T_Seq(test_cx.stm,
+                             T_Seq(T_Label(continue_lbl),
+                                   T_Seq(convertToNx(body),
+                                         T_Seq(T_Jump(T_Name(test_lbl), Temp_LabelList(test_lbl, NULL)),
+                                               T_Label(done)))))));
 }
 
 Tr_exp Tr_for(Tr_access var, Tr_level cur_level, Tr_exp lo, Tr_exp hi, Tr_exp body, Temp_label done) {
@@ -380,11 +386,12 @@ Tr_exp Tr_for(Tr_access var, Tr_level cur_level, Tr_exp lo, Tr_exp hi, Tr_exp bo
     Temp_label enter_lbl = Temp_newlabel();
     T_exp loop_var = convertToEx(Tr_simpleVar(var, cur_level));
     return Tr_Nx(T_Seq(T_Label(for_loop),
-            T_Seq(T_Move(loop_var, convertToEx(lo)),
-                    T_Seq(T_Cjump(T_le, loop_var, convertToEx(hi), enter_lbl, done),
-                            T_Seq(T_Label(enter_lbl),
-                                    T_Seq(convertToNx(body),
-                                            T_Seq(T_Jump(T_Name(enter_lbl), Temp_LabelList(enter_lbl, NULL)), T_Label(done))))))));
+                       T_Seq(T_Move(loop_var, convertToEx(lo)),
+                             T_Seq(T_Cjump(T_le, loop_var, convertToEx(hi), enter_lbl, done),
+                                   T_Seq(T_Label(enter_lbl),
+                                         T_Seq(convertToNx(body),
+                                               T_Seq(T_Jump(T_Name(enter_lbl), Temp_LabelList(enter_lbl, NULL)),
+                                                     T_Label(done))))))));
 }
 
 Tr_exp Tr_functionCall(S_symbol name, Tr_level callee, Tr_level caller, Tr_expList args, bool is_proc) {

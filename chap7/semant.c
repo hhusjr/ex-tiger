@@ -29,8 +29,8 @@ static expty Expty(Tr_exp exp, Ty_ty ty) {
     return e;
 }
 
-static void *requireSym(int pos, S_table t, S_symbol sym, void* not_found) {
-    void* look = S_look(t, sym);
+static void *requireSym(int pos, S_table t, S_symbol sym, void *not_found) {
+    void *look = S_look(t, sym);
     if (!look) {
         EM_error(pos, "Undefined symbol %s", sym->name);
         return not_found;
@@ -116,8 +116,8 @@ static bool isTypeCompat(Ty_ty lhs, Ty_ty rhs) {
     Ty_ty l = actualTy(lhs), r = actualTy(rhs);
 
     return (l == r && l->kind != Ty_nil && r->kind != Ty_nil)
-        ||  (l->kind == Ty_nil && r->kind == Ty_record)
-        ||  (l->kind == Ty_record && r->kind == Ty_nil);
+           || (l->kind == Ty_nil && r->kind == Ty_record)
+           || (l->kind == Ty_record && r->kind == Ty_nil);
 }
 
 static expty visitExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {
@@ -248,7 +248,8 @@ static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs at
         return Expty(Tr_const(0), Ty_Int());
     }
 
-    return Expty(Tr_functionCall(exp->u.call.func, func->u.fun.level, attrs.level, arg_tr, result == Ty_Void()), result);
+    return Expty(Tr_functionCall(exp->u.call.func, func->u.fun.level, attrs.level, arg_tr, result == Ty_Void()),
+                 result);
 }
 
 static expty visitNilExp() {
@@ -267,35 +268,36 @@ static Tr_oper opMap(A_oper op) {
     switch (op) {
         case A_plusOp:
             return Tr_plus;
-            
+
         case A_minusOp:
             return Tr_minus;
-            
+
         case A_timesOp:
             return Tr_times;
-            
+
         case A_divideOp:
             return Tr_divide;
-            
+
         case A_eqOp:
             return Tr_eq;
-            
+
         case A_neqOp:
             return Tr_neq;
-            
+
         case A_ltOp:
             return Tr_lt;
-            
+
         case A_leOp:
             return Tr_le;
-            
+
         case A_gtOp:
             return Tr_gt;
-            
+
         case A_geOp:
             return Tr_ge;
 
-        default: assert(0);
+        default:
+            assert(0);
     }
 }
 
@@ -465,7 +467,7 @@ static expty visitForExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
         EM_error(body->pos, "loop body must be void");
         return Expty(Tr_nop(), Ty_Void());
     }
-    
+
     return Expty(Tr_for(var, attrs.level, lo_v.exp, hi_v.exp, body_v.exp, done), Ty_Void());
 }
 
@@ -520,7 +522,8 @@ struct fieldAndInitializer_ {
     Ty_field field;
     Tr_exp initializer;
 };
-typedef struct fieldAndInitializer_* fieldAndInitializer;
+typedef struct fieldAndInitializer_ *fieldAndInitializer;
+
 fieldAndInitializer FieldAndInitializer(Ty_field field, Tr_exp initializer) {
     fieldAndInitializer p = checked_malloc(sizeof(*p));
     p->field = field;

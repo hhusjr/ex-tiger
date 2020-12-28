@@ -1,7 +1,7 @@
 %{
 #include <stdio.h>
 #include "util.h"
-#include "symbol.h" 
+#include "symbol.h"
 #include "errormsg.h"
 #include "absyn.h"
 
@@ -38,14 +38,14 @@ void yyerror(char *s)
 %token <sval> ID STRING
 %token <ival> INT
 
-%token 
-  COMMA COLON SEMICOLON LPAREN RPAREN LBRACK RBRACK 
-  LBRACE RBRACE DOT 
+%token
+  COMMA COLON SEMICOLON LPAREN RPAREN LBRACK RBRACK
+  LBRACE RBRACE DOT
   PLUS MINUS TIMES DIVIDE EQ NEQ LT LE GT GE
   AND OR ASSIGN
-  ARRAY IF THEN ELSE WHILE FOR TO DO LET IN END OF 
+  ARRAY IF THEN ELSE WHILE FOR TO DO LET IN END OF
   BREAK NIL
-  FUNCTION VAR TYPE 
+  FUNCTION VAR TYPE
 
 %type <exp> exp program
 %type <decList> decs

@@ -666,14 +666,104 @@ static expty visitDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
     }
 }
 
+typedef struct typeNodeHead_* typeNodeHead;
+struct typeNodeHead_ {
+    int in_deg;
+    typeNodeHead next;
+};
+typeNodeHead TypeNodeHead(int in_deg, typeNodeHead next) {
+    typeNodeHead p = checked_malloc(sizeof(*p));
+    p->in_deg = in_deg;
+    p->next = next;
+    return p;
+}
+
+typedef struct topoQueue_* topoQueue;
+struct topoQueue_ {
+    typeNodeHead node;
+    topoQueue next;
+};
+topoQueue TopoQueue(typeNodeHead node, topoQueue next) {
+    topoQueue p = checked_malloc(sizeof(*p));
+    p->next = next;
+    p->node = node;
+    return p;
+}
+
 void visitTypeDec(S_table tenv, S_table venv, A_dec dec) {
+    S_table type_nodes = S_empty(); // The in-degree of each type node, for detecting loops
     for (A_nametyList list = dec->u.type; list; list = list->tail) {
         S_enter(tenv, list->head->name, Ty_Name(list->head->name, NULL));
+
+        // Prevent same type name in mutually recursive type declarations
+        if (S_look(type_nodes, list->head->name)) {
+            EM_error(list->head->ty->pos, "type name must be unique in mutually recursive type declarations");
+        }
+
+        S_enter(type_nodes, list->head->name, TypeNodeHead(0, NULL));
     }
 
+    // Build type reference graph
+    for (A_nametyList list = dec->u.type; list; list = list->tail) {
+        if (list->head->ty->kind == A_nameTy) {
+            typeNodeHead p = S_look(type_nodes, list->head->name);
+            assert(p);
+            p->next = S_look(type_nodes, list->head->ty->u.name); // If p->next is null, maybe int or string
+            if (p->next) {
+                p->next->in_deg++;
+            }
+        }
+    }
+
+    // Use toposort to detect cycles in the graph
+    topoQueue head = NULL, tail = NULL;
+
+    // Put all 0-in-deg nodes to the topoQueue
+    for (A_nametyList list = dec->u.type; list; list = list->tail) {
+        if (list->head->ty->kind == A_nameTy) {
+            typeNodeHead p = S_look(type_nodes, list->head->name);
+            assert(p);
+            if (p->in_deg != 0) {
+                continue;
+            }
+
+            if (!head) {
+                head = tail = TopoQueue(p, NULL);
+            } else {
+                tail->next = TopoQueue(p, NULL);
+                tail = tail->next;
+            }
+        }
+    }
+
+    // Do toposort
+    while (head) {
+        if (head->node->next) {
+            head->node->next->in_deg--;
+
+            if (head->node->next->in_deg == 0) {
+                tail->next = TopoQueue(head->node->next, NULL);
+                tail = tail->next;
+            }
+        }
+
+        head = head->next;
+    }
+
+    // Detect cycle
     for (A_nametyList list = dec->u.type; list; list = list->tail) {
         Ty_ty name = S_look(tenv, list->head->name);
-        assert(name->kind == Ty_name && name->u.name.ty == NULL);
+
+        if (list->head->ty->kind == A_nameTy) {
+            typeNodeHead p = S_look(type_nodes, list->head->name);
+            assert(p);
+            if (p->in_deg != 0) {
+                EM_error(list->head->ty->pos, "Type declaration cycle detected, type %s is in a cycle.", list->head->name->name);
+                name->u.name.ty = Ty_Int();
+                continue;
+            }
+        }
+
         name->u.name.ty = visitTy(tenv, venv, list->head->ty);
     }
 }

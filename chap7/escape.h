@@ -5,7 +5,7 @@
 #ifndef TIGER_ESCAPE
 #define TIGER_ESCAPE
 
-#include <absyn.h>
+#include "absyn.h"
 
 void Esc_findEscape(A_exp exp);
 

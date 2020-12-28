@@ -2,18 +2,18 @@
  * semant.c - Used for semantic analysis
  */
 
-#include <util.h>
-#include <semant.h>
-#include <env.h>
-#include <errormsg.h>
+#include "util.h"
+#include "semant.h"
+#include "env.h"
+#include "errormsg.h"
 #include <stdlib.h>
-#include <absyn.h>
-#include <symbol.h>
+#include "absyn.h"
+#include "symbol.h"
 #include "types.h"
 #include "env.h"
 #include "absyn.h"
-#include <escape.h>
-#include <translate.h>
+#include "escape.h"
+#include "translate.h"
 
 struct expty_ {
     Tr_exp exp;
@@ -588,6 +588,7 @@ static expty visitLetExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs att
 
     {
         // merge type declarations
+        // TODO: Loop detection
         A_nametyList cur = NULL;
         for (A_decList dec_list = exp->u.let.decs; dec_list && dec_list->tail;) {
             if (dec_list->head->kind == A_typeDec

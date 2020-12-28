@@ -2,8 +2,8 @@
  * translate.c - translate code to IR
  */
 
-#include <translate.h>
-#include <frame.h>
+#include "translate.h"
+#include "frame.h"
 #include "tree.h"
 
 #define SL_OFFSET (-4)
@@ -129,6 +129,7 @@ static T_stm convertToNx(Tr_exp exp) {
 }
 
 static Cx convertToCx(Tr_exp exp) {
+    // TODO: Consider special cases like T_Const(0)
     switch (exp->kind) {
         case Tr_ex: {
             T_stm stm = T_Cjump(T_ne, exp->u.ex, T_Const(0), NULL, NULL);

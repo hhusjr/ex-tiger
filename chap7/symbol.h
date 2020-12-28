@@ -6,7 +6,7 @@
 #ifndef TIGER_SYMBOL
 #define TIGER_SYMBOL
 
-#include <util.h>
+#include "util.h"
 
 typedef struct S_symbol_ *S_symbol;
 

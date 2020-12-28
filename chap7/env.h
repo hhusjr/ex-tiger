@@ -3,7 +3,7 @@
 
 #include "symbol.h"
 #include "types.h"
-#include <translate.h>
+#include "translate.h"
 
 typedef struct E_enventry_ *E_enventry;
 

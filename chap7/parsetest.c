@@ -1,15 +1,13 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "util.h"
 #include "errormsg.h"
 #include "semant.h"
-#include "types.h"
 #include "frame.h"
-#include <stdlib.h>
-#include <symbol.h>
-#include <absyn.h>
-#include <prabsyn.h>
-#include <translate.h>
-#include <printtree.h>
+#include "absyn.h"
+#include "prabsyn.h"
+#include "translate.h"
+#include "printtree.h"
 
 extern int yyparse(void);
 

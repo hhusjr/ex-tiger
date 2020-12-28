@@ -6,9 +6,9 @@
 #ifndef TIGER_TEMP
 #define TIGER_TEMP
 
-#include <util.h>
 #include <stdio.h>
-#include <symbol.h>
+#include "util.h"
+#include "symbol.h"
 
 struct Temp_temp_ {
     int num;

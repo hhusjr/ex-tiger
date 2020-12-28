@@ -1,6 +1,5 @@
 #include "env.h"
 #include "util.h"
-#include <stdlib.h>
 
 E_enventry E_VarEntry(Ty_ty ty, Tr_access access) {
     E_enventry p = checked_malloc(sizeof(*p));

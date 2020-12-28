@@ -5,8 +5,8 @@
 #ifndef TIGER_TRANSLATE
 #define TIGER_TRANSLATE
 
-#include <temp.h>
-#include <frame.h>
+#include "temp.h"
+#include "frame.h"
 
 typedef struct Tr_access_ *Tr_access;
 typedef struct Tr_accessList_ *Tr_accessList;

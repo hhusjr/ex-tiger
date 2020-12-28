@@ -5,9 +5,9 @@
 #ifndef TIGER_FRAME
 #define TIGER_FRAME
 
-#include <temp.h>
-#include <util.h>
-#include <tree.h>
+#include "temp.h"
+#include "util.h"
+#include "tree.h"
 
 typedef struct F_frame_ *F_frame;
 typedef struct F_access_ *F_access;

@@ -10,7 +10,7 @@
 #ifndef TIGER_ABSYN
 #define TIGER_ABSYN
 
-#include <symbol.h>
+#include "symbol.h"
 
 typedef int A_pos;
 

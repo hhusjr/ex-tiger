@@ -27,9 +27,8 @@
  *      Static link         <- Stack pointer    +
  */
 
-#include <frame.h>
-#include <temp.h>
 #include "frame.h"
+#include "temp.h"
 
 static struct Temp_temp_ f_fp, f_rv;
 

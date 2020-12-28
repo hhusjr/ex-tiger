@@ -8,7 +8,7 @@
 #include "temp.h"
 #include "tree.h"
 #include "printtree.h"
-#include <frame.h>
+#include "frame.h"
 
 /* local function prototype */
 static void pr_tree_exp(FILE *out, T_exp exp, int d);

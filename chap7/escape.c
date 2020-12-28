@@ -2,10 +2,9 @@
  * escape.c - escape analysis
  */
 
-#include <escape.h>
+#include "escape.h"
 #include "absyn.h"
 #include "env.h"
-#include <env.h>
 
 static void visitExp(S_table eenv, int level, A_exp exp);
 

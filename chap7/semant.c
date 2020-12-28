@@ -160,7 +160,11 @@ static expty visitExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs)
 static expty visitVar(S_table tenv, S_table venv, A_var var, visitorAttrs attrs, bool *is_loopvar_check) {
     switch (var->kind) {
         case A_simpleVar: {
-            E_enventry e = (E_enventry) requireSym(var->pos, venv, var->u.simple, Ty_Int());
+            E_enventry e = (E_enventry) requireSym(var->pos, venv, var->u.simple, NULL);
+            if (!e) {
+                // If the variable can not be found, then return a dummy result
+                return Expty(Tr_const(0), Ty_Int());
+            }
             if (is_loopvar_check) {
                 *is_loopvar_check = e->u.var.is_loop_var;
             }

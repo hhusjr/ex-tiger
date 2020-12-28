@@ -129,15 +129,21 @@ static T_stm convertToNx(Tr_exp exp) {
 }
 
 static Cx convertToCx(Tr_exp exp) {
-    // TODO: Consider special cases like T_Const(0)
     switch (exp->kind) {
         case Tr_ex: {
+            // First consider special cases like T_Const(0) or T_Const(not 0)
+            if (exp->u.ex->kind == T_CONST && exp->u.ex->u.CONST == 0) {
+                // No matter what, goto false branch
+                T_stm stm = T_Jump(T_Name(NULL), Temp_LabelList(NULL, NULL));
+                return newCx(NULL, PatchList(&stm->u.JUMP.exp->u.NAME, PatchList(&stm->u.JUMP.jumps->head, NULL)), stm);
+            } else if (exp->u.ex->kind == T_CONST && exp->u.ex->u.CONST != 0) {
+                // No matter what, goto true branch
+                T_stm stm = T_Jump(T_Name(NULL), Temp_LabelList(NULL, NULL));
+                return newCx(PatchList(&stm->u.JUMP.exp->u.NAME, PatchList(&stm->u.JUMP.jumps->head, NULL)), NULL, stm);
+            }
+
             T_stm stm = T_Cjump(T_ne, exp->u.ex, T_Const(0), NULL, NULL);
             return newCx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
-        }
-
-        case Tr_nx: {
-            return newCx(NULL, NULL, exp->u.nx);
         }
 
         case Tr_cx:
@@ -309,6 +315,7 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
     Cx cx = convertToCx(test);
 
     // Condition1: Both nx (without return value)
+    // for example: if a then print("x") else print("y")
     if (then->kind == Tr_nx && elsee->kind == Tr_nx) {
         Temp_label t = Temp_newlabel(), f = Temp_newlabel(), conj = Temp_newlabel();
         doPatch(cx.trues, t);
@@ -322,39 +329,53 @@ Tr_exp Tr_ifthenelse(Tr_exp test, Tr_exp then, Tr_exp elsee) {
                                                          T_Label(conj))))))));
     }
 
-    // Condition2: Both ex (with return value)
-    if (then->kind == Tr_ex && elsee->kind == Tr_ex) {
+    // Condition3: Both cx, or 0/1+cx, or 1/0+cx
+    // for example: if a then x > y else p > q
+    // for example: if a then 1 else p > q
+    // for example: if a then p < q else 0
+    if ((then->kind == Tr_cx && (elsee->kind == Tr_cx || (elsee->kind == Tr_ex && elsee->u.ex->kind == T_CONST && (elsee->u.ex->u.CONST == 0 || elsee->u.ex->u.CONST == 1))))
+    ||  (elsee->kind == Tr_cx && (then->kind == Tr_cx || (then->kind == Tr_ex && then->u.ex->kind == T_CONST && (then->u.ex->u.CONST == 0 || then->u.ex->u.CONST == 1))))) {
+        Cx then_c = convertToCx(then), elses_c = convertToCx(elsee);
         Temp_label t = Temp_newlabel(), f = Temp_newlabel(), conj = Temp_newlabel();
         doPatch(cx.trues, t);
         doPatch(cx.falses, f);
-        Temp_temp r = Temp_newtemp();
-        return Tr_Ex(T_Eseq(cx.stm,
-                            T_Eseq(T_Label(t),
-                                   T_Eseq(T_Move(T_Temp(r), convertToEx(then)),
-                                          T_Eseq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
-                                                 T_Eseq(T_Label(f),
-                                                        T_Eseq(T_Move(T_Temp(r), convertToEx(elsee)),
-                                                               T_Eseq(T_Label(conj),
-                                                                      T_Temp(r)))))))));
+        T_stm stm = T_Seq(cx.stm,
+                          T_Seq(T_Label(t),
+                                T_Seq(then_c.stm,
+                                      T_Seq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
+                                            T_Seq(T_Label(f),
+                                                  T_Seq(elses_c.stm,
+                                                        T_Label(conj)))))));
+
+        return Tr_Cx(joinPatch(then_c.trues, elses_c.trues),
+                     joinPatch(then_c.falses, elses_c.falses),
+                     stm);
     }
 
-    // Condition3: Both convert to cx
-    // TODO: Make it more efficient
-    Cx then_c = convertToCx(then), elses_c = convertToCx(elsee);
+    // Condition4: nx+ex
+    // Impossible
+    assert(!(then->kind == Tr_nx && elsee->kind != Tr_ex));
+
+    // Condition5: ex+nx
+    // Impossible
+    assert(!(then->kind == Tr_ex && elsee->kind != Tr_nx));
+
+    // Condition2: Both ex (with return value)
+    // for example: if a then 3 else 4
+    // And Other situations
+    // We all convert them to ex
     Temp_label t = Temp_newlabel(), f = Temp_newlabel(), conj = Temp_newlabel();
     doPatch(cx.trues, t);
     doPatch(cx.falses, f);
-    T_stm stm = T_Seq(cx.stm,
-                      T_Seq(T_Label(t),
-                            T_Seq(then_c.stm,
-                                  T_Seq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
-                                        T_Seq(T_Label(f),
-                                              T_Seq(elses_c.stm,
-                                                    T_Label(conj)))))));
-
-    return Tr_Cx(joinPatch(then_c.trues, elses_c.trues),
-                 joinPatch(then_c.falses, elses_c.falses),
-                 stm);
+    Temp_temp r = Temp_newtemp();
+    return Tr_Ex(T_Eseq(cx.stm,
+                        T_Eseq(T_Label(t),
+                               T_Eseq(T_Move(T_Temp(r), convertToEx(then)),
+                                      T_Eseq(T_Jump(T_Name(conj), Temp_LabelList(conj, NULL)),
+                                             T_Eseq(T_Label(f),
+                                                    T_Eseq(T_Move(T_Temp(r), convertToEx(elsee)),
+                                                           T_Eseq(T_Label(conj),
+                                                                  T_Temp(r)))))))));
 }
 
 Tr_exp Tr_ifthen(Tr_exp test, Tr_exp then) {

@@ -219,6 +219,43 @@ Tr_exp Tr_fieldVar(Tr_exp var, int field_idx) {
     );
 }
 
+Tr_exp Tr_strCmp(Tr_oper op, Tr_exp l, Tr_exp r) {
+    switch (op) {
+        case Tr_eq: {
+            T_stm stm = T_Cjump(T_eq, F_externalCall("strCmp", T_ExpList(convertToEx(l), T_ExpList(convertToEx(r), NULL))), T_Const(0), NULL, NULL);
+            return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
+        }
+
+        case Tr_neq: {
+            T_stm stm = T_Cjump(T_ne, F_externalCall("strCmp", T_ExpList(convertToEx(l), T_ExpList(convertToEx(r), NULL))), T_Const(0), NULL, NULL);
+            return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
+        }
+
+        case Tr_lt: {
+            T_stm stm = T_Cjump(T_lt, F_externalCall("strCmp", T_ExpList(convertToEx(l), T_ExpList(convertToEx(r), NULL))), T_Const(0), NULL, NULL);
+            return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
+        }
+
+        case Tr_le: {
+            T_stm stm = T_Cjump(T_le, F_externalCall("strCmp", T_ExpList(convertToEx(l), T_ExpList(convertToEx(r), NULL))), T_Const(0), NULL, NULL);
+            return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
+        }
+
+        case Tr_gt: {
+            T_stm stm = T_Cjump(T_gt, F_externalCall("strCmp", T_ExpList(convertToEx(l), T_ExpList(convertToEx(r), NULL))), T_Const(0), NULL, NULL);
+            return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
+        }
+
+        case Tr_ge: {
+            T_stm stm = T_Cjump(T_ge, F_externalCall("strCmp", T_ExpList(convertToEx(l), T_ExpList(convertToEx(r), NULL))), T_Const(0), NULL, NULL);
+            return Tr_Cx(PatchList(&stm->u.CJUMP.true, NULL), PatchList(&stm->u.CJUMP.false, NULL), stm);
+        }
+
+        default:
+            assert(0);
+    }
+}
+
 Tr_exp Tr_op(Tr_oper op, Tr_exp l, Tr_exp r) {
     switch (op) {
         case Tr_plus:

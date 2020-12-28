@@ -108,6 +108,8 @@ Tr_exp Tr_const(int n);
 
 Tr_exp Tr_string(string s);
 
+Tr_exp Tr_strCmp(Tr_oper op, Tr_exp l, Tr_exp r);
+
 Tr_exp Tr_break(Temp_label done);
 
 Tr_exp Tr_stmtSeq(Tr_exp left, Tr_exp right);

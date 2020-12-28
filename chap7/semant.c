@@ -326,10 +326,7 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attr
         case A_geOp: {
             if (isTypeCompat(vl.ty, Ty_String()) &&
                 isTypeCompat(vr.ty, Ty_String())) {
-                // TODO: Finish string comparison
-                printf("String comparison operator not implemented\n");
-                assert(0);
-                return Expty(NULL, Ty_Int());
+                return Expty(Tr_strCmp(opMap(op), vl.exp, vr.exp), Ty_Int());
             }
             if (isTypeCompat(vl.ty, Ty_Int()) &&
                 isTypeCompat(vr.ty, Ty_Int())) {
@@ -342,6 +339,10 @@ static expty visitOpExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attr
         case A_eqOp:
         case A_neqOp: {
             if (isTypeCompat(vl.ty, vr.ty)) {
+                if (isTypeCompat(vl.ty, Ty_String())) {
+                    assert(isTypeCompat(vr.ty, Ty_String()));
+                    return Expty(Tr_strCmp(opMap(op), vl.exp, vr.exp), Ty_Int());
+                }
                 return Expty(Tr_op(opMap(op), vl.exp, vr.exp), Ty_Int());
             }
             EM_error(exp->pos, "equality test operator can not be applied to these operators");

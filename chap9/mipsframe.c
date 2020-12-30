@@ -30,7 +30,7 @@
 #include "frame.h"
 #include "temp.h"
 
-static struct Temp_temp_ f_fp, f_rv;
+static struct Temp_temp_ f_fp = {1}, f_sp = {2}, f_at = {3}, f_rv = {4}, f_zero = {5};
 
 const int F_wordSize = 4;
 const int F_maxRegArg = 4;
@@ -111,6 +111,18 @@ Temp_temp F_FP() {
 
 Temp_temp F_RV() {
     return &f_rv;
+}
+
+Temp_temp F_AT() {
+    return &f_at;
+}
+
+Temp_temp F_SP() {
+    return &f_sp;
+}
+
+Temp_temp F_ZERO() {
+    return &f_zero;
 }
 
 T_exp F_exp(F_access access, T_exp fp) {

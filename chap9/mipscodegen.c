@@ -1,5 +1,6 @@
 #include "codegen.h"
 #include "tree.h"
+#include "assem.h"
 #include <stdint.h>
 
 /*
@@ -11,6 +12,10 @@
 
 typedef T_expList stmMatcher(T_stm, bool* matched);
 typedef T_expList expMatcher(T_exp, bool* matched);
+typedef void stmGen(T_stm);
+typedef Temp_temp expGen(T_exp);
+
+static AS_instrList instrs = NULL, instrs_tail = NULL;
 
 struct pattern_ {
     enum {
@@ -20,12 +25,20 @@ struct pattern_ {
         stmMatcher* stm;
         expMatcher* exp;
     } matcher;
+    union {
+        stmGen* stm;
+        expGen* exp;
+    } gen;
     int cost;
 };
 typedef struct pattern_ pattern;
 
+static void emit();
+
 static void findOptimalExp(T_exp exp);
 static void findOptimalStm(T_stm stm);
+static Temp_temp doExp(T_exp exp);
+static void doStm(T_stm stm);
 
 static T_expList matchBinopPlus(T_exp exp, bool* matched);
 static T_expList matchBinopPlusImmEC(T_exp exp, bool* matched);
@@ -59,6 +72,38 @@ static T_expList matchConst(T_exp exp, bool* matched);
 static T_expList matchTemp(T_exp exp, bool* matched);
 static T_expList matchExp(T_stm stm, bool* matched);
 
+static Temp_temp genBinopPlus(T_exp exp);
+static Temp_temp genBinopPlusImmEC(T_exp exp);
+static Temp_temp genBinopPlusImmCE(T_exp exp);
+static Temp_temp genBinopMinus(T_exp exp);
+static Temp_temp genBinopMinusImm(T_exp exp);
+static Temp_temp genBinopDiv(T_exp exp);
+static Temp_temp genBinopMul(T_exp exp);
+static void genBinopCjumpEq(T_stm stm);
+static void genBinopCjumpNe(T_stm stm);
+static void genBinopCjumpLt(T_stm stm);
+static void genBinopCjumpGe(T_stm stm);
+static void genBinopCjumpGt(T_stm stm);
+static void genBinopCjumpLe(T_stm stm);
+static void genBinopCjumpLt0(T_stm stm);
+static void genBinopCjumpGe0(T_stm stm);
+static void genBinopCjumpGt0(T_stm stm);
+static void genBinopCjumpLe0(T_stm stm);
+static void genJump(T_stm stm);
+static void genProcCall(T_stm stm);
+static void genFuncCall(T_stm stm);
+static Temp_temp genMemLoadOffsetEC(T_exp exp);
+static Temp_temp genMemLoadOffsetCE(T_exp exp);
+static Temp_temp genMemLoadExp(T_exp exp);
+static void genMoveTemp(T_stm stm);
+static void genLabel(T_stm stm);
+static void genMemStoreOffsetEC(T_stm stm);
+static void genMemStoreOffsetCE(T_stm stm);
+static void genMemStoreExp(T_stm stm);
+static Temp_temp genConst(T_exp exp);
+static Temp_temp genTemp(T_exp exp);
+static void genExp(T_stm stm);
+
 /*
  * Pattern definitions
  *
@@ -89,7 +134,7 @@ static T_expList matchExp(T_stm stm, bool* matched);
  * jal label
  * (... Save args ...)      MOVE(TEMP t,CALL(NAME l1))                  1
  * jal label
- * add rt, ra, zero                                             Move
+ * add rt, ra, zero
  * lw rt, off(rs)           MEM(BINOP(PLUS,e1,CONST))                   1
  * lw rt, off(rs)           MEM(BINOP(PLUS,CONST,e1))                   1
  * lw rt, 0(rs)             MEM(e1)                                     1
@@ -104,40 +149,49 @@ static T_expList matchExp(T_stm stm, bool* matched);
  */
 
 pattern patterns[] = {
-        {PAT_EXP, {.exp = matchBinopPlus}, 1},
-        {PAT_EXP, {.exp = matchBinopPlusImmEC}, 1},
-        {PAT_EXP, {.exp = matchBinopPlusImmCE}, 1},
-        {PAT_EXP, {.exp = matchBinopMinus}, 1},
-        {PAT_EXP, {.exp = matchBinopMinusImm}, 1},
-        {PAT_EXP, {.exp = matchBinopDiv}, 1},
-        {PAT_EXP, {.exp = matchBinopMul}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpEq}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpNe}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpLt}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpGe}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpGt}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpLe}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpLt0}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpGe0}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpGt0}, 1},
-        {PAT_STM, {.stm = matchBinopCjumpLe0}, 1},
-        {PAT_STM, {.stm = matchJump}, 1},
-        {PAT_STM, {.stm = matchProcCall}, 1},
-        {PAT_STM, {.stm = matchFuncCall}, 1},
-        {PAT_EXP, {.exp = matchMemLoadOffsetEC}, 1},
-        {PAT_EXP, {.exp = matchMemLoadOffsetCE}, 1},
-        {PAT_EXP, {.exp = matchMemLoadExp}, 1},
-        {PAT_STM, {.stm = matchMoveTemp}, 1},
-        {PAT_STM, {.stm = matchLabel}, 1},
-        {PAT_STM, {.stm = matchMemStoreOffsetEC}, 1},
-        {PAT_STM, {.stm = matchMemStoreOffsetCE}, 1},
-        {PAT_STM, {.stm = matchMemStoreExp}, 1},
-        {PAT_EXP, {.exp = matchConst}, 1},
-        {PAT_EXP, {.exp = matchTemp}, 0},
-        {PAT_STM, {.stm = matchExp}, 0},
+        {PAT_EXP, {.exp = matchBinopPlus}, {.exp = genBinopPlus}, 1},
+        {PAT_EXP, {.exp = matchBinopPlusImmEC}, {.exp = genBinopPlusImmEC}, 1},
+        {PAT_EXP, {.exp = matchBinopPlusImmCE}, {.exp = genBinopPlusImmCE}, 1},
+        {PAT_EXP, {.exp = matchBinopMinus}, {.exp = genBinopMinus}, 1},
+        {PAT_EXP, {.exp = matchBinopMinusImm}, {.exp = genBinopMinusImm}, 1},
+        {PAT_EXP, {.exp = matchBinopDiv}, {.exp = genBinopDiv}, 1},
+        {PAT_EXP, {.exp = matchBinopMul}, {.exp = genBinopMul}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpEq}, {.stm = genBinopCjumpEq}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpNe}, {.stm = genBinopCjumpNe}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpLt}, {.stm = genBinopCjumpLt}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpGe}, {.stm = genBinopCjumpGe}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpGt}, {.stm = genBinopCjumpGt}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpLe}, {.stm = genBinopCjumpLe}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpLt0}, {.stm = genBinopCjumpLt0}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpGe0}, {.stm = genBinopCjumpGe0}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpGt0}, {.stm = genBinopCjumpGt0}, 1},
+        {PAT_STM, {.stm = matchBinopCjumpLe0}, {.stm = genBinopCjumpLe0}, 1},
+        {PAT_STM, {.stm = matchJump}, {.stm = genJump}, 1},
+        {PAT_STM, {.stm = matchProcCall}, {.stm = genProcCall}, 1},
+        {PAT_STM, {.stm = matchFuncCall}, {.stm = genFuncCall}, 1},
+        {PAT_EXP, {.exp = matchMemLoadOffsetEC}, {.exp = genMemLoadOffsetEC}, 1},
+        {PAT_EXP, {.exp = matchMemLoadOffsetCE}, {.exp = genMemLoadOffsetCE}, 1},
+        {PAT_EXP, {.exp = matchMemLoadExp}, {.exp = genMemLoadExp}, 1},
+        {PAT_STM, {.stm = matchMoveTemp}, {.stm = genMoveTemp}, 1},
+        {PAT_STM, {.stm = matchLabel}, {.stm = genLabel}, 1},
+        {PAT_STM, {.stm = matchMemStoreOffsetEC}, {.stm = genMemStoreOffsetEC}, 1},
+        {PAT_STM, {.stm = matchMemStoreOffsetCE}, {.stm = genMemStoreOffsetCE}, 1},
+        {PAT_STM, {.stm = matchMemStoreExp}, {.stm = genMemStoreExp}, 1},
+        {PAT_EXP, {.exp = matchConst}, {.exp = genConst}, 1},
+        {PAT_EXP, {.exp = matchTemp}, {.exp = genTemp}, 0},
+        {PAT_STM, {.stm = matchExp}, {.stm = genExp}, 0},
 };
 
 #define N_PATTERN (sizeof(patterns) / sizeof(pattern))
+
+void emit(AS_instr inst) {
+    if (instrs == NULL) {
+        instrs = instrs_tail = AS_InstrList(inst, NULL);
+    } else {
+        instrs_tail->tail = AS_InstrList(inst, NULL);
+        instrs = instrs->tail;
+    }
+}
 
 static T_expList matchBinopPlus(T_exp exp, bool* matched) {
     if (exp->kind == T_BINOP && exp->u.BINOP.op == T_plus) {
@@ -460,4 +514,196 @@ static void findOptimalStm(T_stm stm) {
             stm->selection = i;
         }
     }
+}
+
+static Temp_temp doExp(T_exp exp) {
+    assert(exp->selection != -1);
+    patterns[exp->selection].gen.exp(exp);
+}
+
+static void doStm(T_stm stm) {
+    assert(stm->selection != -1);
+    patterns[stm->selection].gen.stm(stm);
+}
+
+Temp_tempList L(Temp_temp h, Temp_tempList t) {
+    return Temp_TempList(h, t);
+}
+
+char cbuf[1024];
+
+static Temp_temp genBinopPlus(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper("add `d0, `s0, `s1\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    return r;
+}
+
+static Temp_temp genBinopPlusImmEC(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.BINOP.right->u.CONST);
+    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL), NULL));
+    return r;
+}
+
+static Temp_temp genBinopPlusImmCE(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.BINOP.left->u.CONST);
+    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    return r;
+}
+
+static Temp_temp genBinopMinus(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper("sub `d0, `s0, `s1", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    return r;
+}
+
+static Temp_temp genBinopMinusImm(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    sprintf(cbuf, "subi `d0, `s0, %d\n", exp->u.BINOP.right->u.CONST);
+    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL)), NULL));
+    return r;
+}
+
+static Temp_temp genBinopDiv(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper("div `s0, `s1\nmflo `d0\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    return r;
+}
+
+static Temp_temp genBinopMul(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper("mult `s0, `s1\nmflo `d0\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    return r;
+}
+
+static void genBinopCjumpEq(T_stm stm) {
+    sprintf(cbuf, "beq `s0, `s1, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpNe(T_stm stm) {
+    sprintf(cbuf, "bne `s0, `s1, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpLt(T_stm stm) {
+    sprintf(cbuf, "slt `d0, `s0, `s1\nbne `d0, `s2, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpGe(T_stm stm) {
+    sprintf(cbuf, "slt `d0, `s0, `s1\nbeq `d0, `s2, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpGt(T_stm stm) {
+    sprintf(cbuf, "slt `d0, `s1, `s0\nbne `d0, `s2, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpLe(T_stm stm) {
+    sprintf(cbuf, "slt `d0, `s1, `s0\nbeq `d0, `s2, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpLt0(T_stm stm) {
+    sprintf(cbuf, "bltz `s0, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpLe0(T_stm stm) {
+    sprintf(cbuf, "blez `s0, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpGt0(T_stm stm) {
+    sprintf(cbuf, "bgtz `s0, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genBinopCjumpGe0(T_stm stm) {
+    sprintf(cbuf, "bgez `s0, %s\n", stm->u.CJUMP.true->name);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+}
+
+static void genJump(T_stm stm) {
+    sprintf(cbuf, "j %s\n", stm->u.JUMP.exp->u.NAME->name);
+    emit(AS_Oper(cbuf, NULL, NULL, AS_Targets(Temp_LabelList(stm->u.JUMP.exp->u.NAME, NULL))));
+}
+
+static void genProcCall(T_stm stm) {
+    assert(0);
+}
+
+static void genFuncCall(T_stm stm) {
+    assert(0);
+}
+
+static Temp_temp genMemLoadOffsetEC(T_exp exp) {
+    sprintf(cbuf, "lw `d0, %d(`s0)\n", exp->u.MEM->u.BINOP.right->u.CONST);
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.left), NULL), NULL));
+    return r;
+}
+
+static Temp_temp genMemLoadOffsetCE(T_exp exp) {
+    sprintf(cbuf, "lw `d0, %d(`s0)\n", exp->u.MEM->u.BINOP.left->u.CONST);
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.right), NULL), NULL));
+    return r;
+}
+
+static Temp_temp genMemLoadExp(T_exp exp) {
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper("lw `d0, 0(`s0)\n", L(r, NULL), L(doExp(exp->u.MEM), NULL), NULL));
+    return r;
+}
+
+static void genMoveTemp(T_stm stm) {
+    emit(AS_Oper("add `d0, `s0, `s1\n", L(stm->u.MOVE.dst->u.TEMP, NULL), L(doExp(stm->u.MOVE.src), L(F_ZERO(), NULL)), NULL));
+}
+
+static void genLabel(T_stm stm) {
+    sprintf(cbuf, "%s:\n", stm->u.LABEL->name);
+    emit(AS_Label(cbuf, stm->u.LABEL));
+}
+
+static void genMemStoreOffsetEC(T_stm stm) {
+    sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.right->u.CONST);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.left), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+}
+
+static void genMemStoreOffsetCE(T_stm stm) {
+    sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.left->u.CONST);
+    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.right), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+}
+
+static void genMemStoreExp(T_stm stm) {
+    emit(AS_Oper("sw `s1, 0(`s0)\n", NULL, L(doExp(stm->u.MOVE.dst), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+}
+
+static Temp_temp genConst(T_exp exp) {
+    sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.CONST);
+    Temp_temp r = Temp_newtemp();
+    emit(AS_Oper(cbuf, L(r, NULL), L(F_ZERO(), NULL), NULL));
+    return r;
+}
+
+static Temp_temp genTemp(T_exp exp) {
+    return exp->u.TEMP;
+}
+
+static void genExp(T_stm stm) {
+    doExp(stm->u.EXP);
 }

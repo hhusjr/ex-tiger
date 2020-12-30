@@ -35,6 +35,12 @@ Temp_temp F_FP();
 
 Temp_temp F_RV();
 
+Temp_temp F_AT();
+
+Temp_temp F_SP();
+
+Temp_temp F_ZERO();
+
 extern const int F_wordSize;
 extern const int F_maxRegArg;
 

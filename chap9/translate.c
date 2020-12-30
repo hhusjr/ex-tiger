@@ -211,10 +211,9 @@ Tr_exp Tr_simpleVar(Tr_access access, Tr_level cur_level) {
 Tr_exp Tr_subscriptVar(Tr_exp var, Tr_exp idx) {
     T_exp ex = convertToEx(idx);
     T_exp varex = convertToEx(var);
+    T_exp o = ex->kind == T_CONST ? T_Const(ex->u.CONST * F_wordSize) : T_Binop(T_mul, ex, T_Const(F_wordSize));
     return Tr_Ex(
-            T_Mem(T_Binop(T_plus, varex,
-                          T_Binop(T_mul, ex, T_Const(F_wordSize))
-            ))
+            T_Mem(T_Binop(T_plus, varex, o))
     );
 }
 

@@ -1,7 +1,6 @@
-/* error : compare rec with array */
 let
-    var a := 1
-    var b := 2
+    type x = array of int
+    var a := x [100] of 0
 in
-    if a = b then a + b else a - b
+    a[3 + a[2]] = 4
 end

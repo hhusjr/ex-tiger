@@ -68,6 +68,7 @@ static T_expList matchLabel(T_stm stm, bool* matched);
 static T_expList matchMemStoreOffsetEC(T_stm stm, bool* matched);
 static T_expList matchMemStoreOffsetCE(T_stm stm, bool* matched);
 static T_expList matchMemStoreExp(T_stm stm, bool* matched);
+static T_expList matchCall(T_exp exp, bool* matched);
 static T_expList matchConst(T_exp exp, bool* matched);
 static T_expList matchTemp(T_exp exp, bool* matched);
 static T_expList matchExp(T_stm stm, bool* matched);
@@ -100,6 +101,7 @@ static void genLabel(T_stm stm);
 static void genMemStoreOffsetEC(T_stm stm);
 static void genMemStoreOffsetCE(T_stm stm);
 static void genMemStoreExp(T_stm stm);
+static Temp_temp genCall(T_exp exp);
 static Temp_temp genConst(T_exp exp);
 static Temp_temp genTemp(T_exp exp);
 static void genExp(T_stm stm);
@@ -144,6 +146,7 @@ static void genExp(T_stm stm);
  * sw rt, off(rs)           MOVE(MEM(BINOP(PLUS,const,e1)),e)           1
  * sw rt, 0(rs)             MOVE(MEM(e1),e)                             1
  * addi rt, zero, imm       CONST(i)                                    1
+ * (x)                      CALL()                                      1
  * /                        TEMP(t)                                     0
  * /                        EXP(e)                                      0
  */
@@ -177,6 +180,7 @@ pattern patterns[] = {
         {PAT_STM, {.stm = matchMemStoreOffsetEC}, {.stm = genMemStoreOffsetEC}, 1},
         {PAT_STM, {.stm = matchMemStoreOffsetCE}, {.stm = genMemStoreOffsetCE}, 1},
         {PAT_STM, {.stm = matchMemStoreExp}, {.stm = genMemStoreExp}, 1},
+        {PAT_EXP, {.exp = matchCall}, {.exp = genCall}, 1},
         {PAT_EXP, {.exp = matchConst}, {.exp = genConst}, 1},
         {PAT_EXP, {.exp = matchTemp}, {.exp = genTemp}, 0},
         {PAT_STM, {.stm = matchExp}, {.stm = genExp}, 0},
@@ -445,6 +449,14 @@ static T_expList matchFuncCall(T_stm stm, bool* matched) {
     return NULL;
 }
 
+static T_expList matchCall(T_exp exp, bool* matched) {
+    if (exp->kind == T_CALL) {
+        *matched = TRUE;
+        return NULL;
+    }
+    return NULL;
+}
+
 /*
  * Use dynamic programming to find optimum coverage method
  */
@@ -692,11 +704,9 @@ static void genJump(T_stm stm) {
 }
 
 static void genProcCall(T_stm stm) {
-    assert(0);
 }
 
 static void genFuncCall(T_stm stm) {
-    assert(0);
 }
 
 static Temp_temp genMemLoadOffsetEC(T_exp exp) {
@@ -761,6 +771,10 @@ static Temp_temp genTemp(T_exp exp) {
 
 static void genExp(T_stm stm) {
     doExp(stm->u.EXP);
+}
+
+static Temp_temp genCall(T_exp exp) {
+    assert(0);
 }
 
 AS_instrList F_codegen(F_frame f, T_stmList stmts) {

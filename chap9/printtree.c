@@ -101,7 +101,7 @@ static void pr_tree_exp(FILE *out, T_exp exp, int d) {
                 fprintf(out, "TEMP RV");
                 break;
             }
-            fprintf(out, "TEMP t%s",
+            fprintf(out, "TEMP %s",
                     Temp_look(Temp_name(), exp->u.TEMP));
             break;
         case T_ESEQ:

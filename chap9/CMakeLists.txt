@@ -30,6 +30,7 @@ add_executable(tiger
         translate.c
         tree.c
         printtree.c
+        assem.c
         canon.c
         ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS}
         )

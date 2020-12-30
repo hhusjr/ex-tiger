@@ -189,7 +189,7 @@ void emit(AS_instr inst) {
         instrs = instrs_tail = AS_InstrList(inst, NULL);
     } else {
         instrs_tail->tail = AS_InstrList(inst, NULL);
-        instrs = instrs->tail;
+        instrs_tail = instrs_tail->tail;
     }
 }
 
@@ -198,6 +198,7 @@ static T_expList matchBinopPlus(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.left, T_ExpList(exp->u.BINOP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopPlusImmEC(T_exp exp, bool* matched) {
@@ -205,6 +206,7 @@ static T_expList matchBinopPlusImmEC(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.left, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchBinopPlusImmCE(T_exp exp, bool* matched) {
@@ -212,6 +214,7 @@ static T_expList matchBinopPlusImmCE(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.right, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchBinopMinus(T_exp exp, bool* matched) {
@@ -219,6 +222,7 @@ static T_expList matchBinopMinus(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.left, T_ExpList(exp->u.BINOP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopMinusImm(T_exp exp, bool* matched) {
@@ -226,6 +230,7 @@ static T_expList matchBinopMinusImm(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.left, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchBinopDiv(T_exp exp, bool* matched) {
@@ -233,6 +238,7 @@ static T_expList matchBinopDiv(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.left, T_ExpList(exp->u.BINOP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopMul(T_exp exp, bool* matched) {
@@ -240,6 +246,7 @@ static T_expList matchBinopMul(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.BINOP.left, T_ExpList(exp->u.BINOP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpEq(T_stm stm, bool* matched) {
@@ -247,13 +254,15 @@ static T_expList matchBinopCjumpEq(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
-static T_expList matchBinopCjumpNq(T_stm stm, bool* matched) {
+static T_expList matchBinopCjumpNe(T_stm stm, bool* matched) {
     if (stm->kind == T_CJUMP && stm->u.CJUMP.op == T_ne) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpLt(T_stm stm, bool* matched) {
@@ -261,6 +270,7 @@ static T_expList matchBinopCjumpLt(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpGt(T_stm stm, bool* matched) {
@@ -268,6 +278,7 @@ static T_expList matchBinopCjumpGt(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpLe(T_stm stm, bool* matched) {
@@ -275,6 +286,7 @@ static T_expList matchBinopCjumpLe(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpGe(T_stm stm, bool* matched) {
@@ -282,6 +294,7 @@ static T_expList matchBinopCjumpGe(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpLt0(T_stm stm, bool* matched) {
@@ -289,6 +302,7 @@ static T_expList matchBinopCjumpLt0(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpGt0(T_stm stm, bool* matched) {
@@ -296,6 +310,7 @@ static T_expList matchBinopCjumpGt0(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpLe0(T_stm stm, bool* matched) {
@@ -303,6 +318,7 @@ static T_expList matchBinopCjumpLe0(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchBinopCjumpGe0(T_stm stm, bool* matched) {
@@ -310,6 +326,7 @@ static T_expList matchBinopCjumpGe0(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.CJUMP.left, T_ExpList(stm->u.CJUMP.right, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchJump(T_stm stm, bool* matched) {
@@ -317,6 +334,7 @@ static T_expList matchJump(T_stm stm, bool* matched) {
         *matched = TRUE;
         return NULL;
     }
+    return NULL;
 }
 
 static T_expList matchMemLoadOffsetEC(T_exp exp, bool* matched) {
@@ -324,6 +342,7 @@ static T_expList matchMemLoadOffsetEC(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.MEM->u.BINOP.left, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchMemLoadOffsetCE(T_exp exp, bool* matched) {
@@ -331,6 +350,7 @@ static T_expList matchMemLoadOffsetCE(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.MEM->u.BINOP.right, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchMemLoadExp(T_exp exp, bool* matched) {
@@ -338,6 +358,7 @@ static T_expList matchMemLoadExp(T_exp exp, bool* matched) {
         *matched = TRUE;
         return T_ExpList(exp->u.MEM->u.BINOP.right, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchMoveTemp(T_stm stm, bool* matched) {
@@ -345,6 +366,7 @@ static T_expList matchMoveTemp(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.MOVE.src, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchLabel(T_stm stm, bool* matched) {
@@ -352,6 +374,7 @@ static T_expList matchLabel(T_stm stm, bool* matched) {
         *matched = TRUE;
         return NULL;
     }
+    return NULL;
 }
 
 static T_expList matchMemStoreOffsetEC(T_stm stm, bool* matched) {
@@ -360,6 +383,7 @@ static T_expList matchMemStoreOffsetEC(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.MOVE.dst->u.MEM->u.BINOP.left, T_ExpList(stm->u.MOVE.src, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchMemStoreOffsetCE(T_stm stm, bool* matched) {
@@ -368,6 +392,7 @@ static T_expList matchMemStoreOffsetCE(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.MOVE.dst->u.MEM->u.BINOP.right, T_ExpList(stm->u.MOVE.src, NULL));
     }
+    return NULL;
 }
 
 static T_expList matchMemStoreExp(T_stm stm, bool* matched) {
@@ -377,6 +402,7 @@ static T_expList matchMemStoreExp(T_stm stm, bool* matched) {
                 T_ExpList(stm->u.MOVE.dst->u.MEM->u.BINOP.right,
                         T_ExpList(stm->u.MOVE.src, NULL)));
     }
+    return NULL;
 }
 
 static T_expList matchConst(T_exp exp, bool* matched) {
@@ -384,6 +410,7 @@ static T_expList matchConst(T_exp exp, bool* matched) {
         *matched = TRUE;
         return NULL;
     }
+    return NULL;
 }
 
 static T_expList matchTemp(T_exp exp, bool* matched) {
@@ -391,6 +418,7 @@ static T_expList matchTemp(T_exp exp, bool* matched) {
         *matched = TRUE;
         return NULL;
     }
+    return NULL;
 }
 
 static T_expList matchExp(T_stm stm, bool* matched) {
@@ -398,6 +426,7 @@ static T_expList matchExp(T_stm stm, bool* matched) {
         *matched = TRUE;
         return T_ExpList(stm->u.EXP, NULL);
     }
+    return NULL;
 }
 
 static T_expList matchProcCall(T_stm stm, bool* matched) {
@@ -405,6 +434,7 @@ static T_expList matchProcCall(T_stm stm, bool* matched) {
         *matched = TRUE;
         return stm->u.EXP->u.CALL.args;
     }
+    return NULL;
 }
 
 static T_expList matchFuncCall(T_stm stm, bool* matched) {
@@ -412,6 +442,7 @@ static T_expList matchFuncCall(T_stm stm, bool* matched) {
         *matched = TRUE;
         return stm->u.EXP->u.CALL.args;
     }
+    return NULL;
 }
 
 /*
@@ -448,13 +479,15 @@ static void findOptimalExp(T_exp exp) {
             continue;
         }
 
-        int total_cost = 0;
         bool matched = FALSE;
-        for (T_expList exps = patterns[i].matcher.exp(exp, &matched); exps; exps = exps->tail) {
-            if (matched) {
-                total_cost += exps->head->cost;
-                matched = FALSE;
-            }
+        T_expList res = patterns[i].matcher.exp(exp, &matched);
+        if (!matched) {
+            continue;
+        }
+
+        int total_cost = 0;
+        for (T_expList exps = res; exps; exps = exps->tail) {
+            total_cost += exps->head->cost;
         }
         total_cost += patterns[i].cost;
 
@@ -484,8 +517,8 @@ static void findOptimalStm(T_stm stm) {
             findOptimalExp(stm->u.CJUMP.right);
             break;
         case T_MOVE:
-            assert(stm->u.MOVE.src->kind == T_TEMP || stm->u.MOVE.src->kind == T_MEM);
-            findOptimalExp(stm->u.MOVE.dst);
+            assert(stm->u.MOVE.dst->kind == T_TEMP || stm->u.MOVE.dst->kind == T_MEM);
+            findOptimalExp(stm->u.MOVE.src);
             break;
         case T_EXP:
             findOptimalExp(stm->u.EXP);
@@ -499,13 +532,15 @@ static void findOptimalStm(T_stm stm) {
             continue;
         }
 
-        int total_cost = 0;
         bool matched = FALSE;
-        for (T_expList exps = patterns[i].matcher.stm(stm, &matched); exps; exps = exps->tail) {
-            if (matched) {
-                total_cost += exps->head->cost;
-                matched = FALSE;
-            }
+        T_expList res = patterns[i].matcher.stm(stm, &matched);
+        if (!matched) {
+            continue;
+        }
+
+        int total_cost = 0;
+        for (T_expList exps = res; exps; exps = exps->tail) {
+            total_cost += exps->head->cost;
         }
         total_cost += patterns[i].cost;
 
@@ -518,7 +553,7 @@ static void findOptimalStm(T_stm stm) {
 
 static Temp_temp doExp(T_exp exp) {
     assert(exp->selection != -1);
-    patterns[exp->selection].gen.exp(exp);
+    return patterns[exp->selection].gen.exp(exp);
 }
 
 static void doStm(T_stm stm) {
@@ -541,27 +576,30 @@ static Temp_temp genBinopPlus(T_exp exp) {
 static Temp_temp genBinopPlusImmEC(T_exp exp) {
     Temp_temp r = Temp_newtemp();
     sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.BINOP.right->u.CONST);
-    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL), NULL));
     return r;
 }
 
 static Temp_temp genBinopPlusImmCE(T_exp exp) {
     Temp_temp r = Temp_newtemp();
     sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.BINOP.left->u.CONST);
-    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.BINOP.right), NULL), NULL));
     return r;
 }
 
 static Temp_temp genBinopMinus(T_exp exp) {
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper("sub `d0, `s0, `s1", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    emit(AS_Oper("sub `d0, `s0, `s1\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
     return r;
 }
 
 static Temp_temp genBinopMinusImm(T_exp exp) {
     Temp_temp r = Temp_newtemp();
     sprintf(cbuf, "subi `d0, `s0, %d\n", exp->u.BINOP.right->u.CONST);
-    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL)), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL), NULL));
     return r;
 }
 
@@ -579,67 +617,78 @@ static Temp_temp genBinopMul(T_exp exp) {
 
 static void genBinopCjumpEq(T_stm stm) {
     sprintf(cbuf, "beq `s0, `s1, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpNe(T_stm stm) {
     sprintf(cbuf, "bne `s0, `s1, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLt(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s0, `s1\nbne `d0, `s2, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGe(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s0, `s1\nbeq `d0, `s2, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGt(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s1, `s0\nbne `d0, `s2, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLe(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s1, `s0\nbeq `d0, `s2, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLt0(T_stm stm) {
     sprintf(cbuf, "bltz `s0, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLe0(T_stm stm) {
     sprintf(cbuf, "blez `s0, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGt0(T_stm stm) {
     sprintf(cbuf, "bgtz `s0, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGe0(T_stm stm) {
     sprintf(cbuf, "bgez `s0, %s\n", stm->u.CJUMP.true->name);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.CJUMP.left), NULL),
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
                  AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genJump(T_stm stm) {
     sprintf(cbuf, "j %s\n", stm->u.JUMP.exp->u.NAME->name);
-    emit(AS_Oper(cbuf, NULL, NULL, AS_Targets(Temp_LabelList(stm->u.JUMP.exp->u.NAME, NULL))));
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, NULL, AS_Targets(Temp_LabelList(stm->u.JUMP.exp->u.NAME, NULL))));
 }
 
 static void genProcCall(T_stm stm) {
@@ -653,14 +702,16 @@ static void genFuncCall(T_stm stm) {
 static Temp_temp genMemLoadOffsetEC(T_exp exp) {
     sprintf(cbuf, "lw `d0, %d(`s0)\n", exp->u.MEM->u.BINOP.right->u.CONST);
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.left), NULL), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.left), NULL), NULL));
     return r;
 }
 
 static Temp_temp genMemLoadOffsetCE(T_exp exp) {
     sprintf(cbuf, "lw `d0, %d(`s0)\n", exp->u.MEM->u.BINOP.left->u.CONST);
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper(cbuf, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.right), NULL), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.right), NULL), NULL));
     return r;
 }
 
@@ -676,17 +727,20 @@ static void genMoveTemp(T_stm stm) {
 
 static void genLabel(T_stm stm) {
     sprintf(cbuf, "%s:\n", stm->u.LABEL->name);
-    emit(AS_Label(cbuf, stm->u.LABEL));
+    string i = String(cbuf);
+    emit(AS_Label(i, stm->u.LABEL));
 }
 
 static void genMemStoreOffsetEC(T_stm stm) {
     sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.right->u.CONST);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.left), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.left), L(doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 static void genMemStoreOffsetCE(T_stm stm) {
     sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.left->u.CONST);
-    emit(AS_Oper(cbuf, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.right), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.right), L(doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 static void genMemStoreExp(T_stm stm) {
@@ -696,7 +750,8 @@ static void genMemStoreExp(T_stm stm) {
 static Temp_temp genConst(T_exp exp) {
     sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.CONST);
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper(cbuf, L(r, NULL), L(F_ZERO(), NULL), NULL));
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(r, NULL), L(F_ZERO(), NULL), NULL));
     return r;
 }
 
@@ -706,4 +761,13 @@ static Temp_temp genTemp(T_exp exp) {
 
 static void genExp(T_stm stm) {
     doExp(stm->u.EXP);
+}
+
+AS_instrList F_codegen(F_frame f, T_stmList stmts) {
+    instrs = instrs_tail = NULL;
+    for (; stmts; stmts = stmts->tail) {
+        findOptimalStm(stmts->head);
+        doStm(stmts->head);
+    }
+    return instrs;
 }

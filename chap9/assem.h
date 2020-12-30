@@ -5,6 +5,9 @@
 #ifndef TIGER_ASSEM
 #define TIGER_ASSEM
 
+#include "temp.h"
+#include "util.h"
+
 typedef struct {Temp_labelList labels;} *AS_targets;
 AS_targets AS_Targets(Temp_labelList labels);
 

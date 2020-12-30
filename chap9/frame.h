@@ -81,4 +81,6 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm);
 
 F_fragList F_FragList(F_frag head, F_fragList tail);
 
+Temp_map F_TempMap();
+
 #endif //TIGER_FRAME

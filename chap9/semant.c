@@ -896,7 +896,6 @@ void visitFunctionDec(S_table tenv, S_table venv, A_dec dec, visitorAttrs attrs)
 }
 
 void SEM_transProg(A_exp exp) {
-    Esc_findEscape(exp);
     S_table tenv = E_base_tenv();
     S_table venv = E_base_venv();
     Tr_level main_level = Tr_newLevel(Tr_outermost(), Temp_namedlabel("main"), NULL);

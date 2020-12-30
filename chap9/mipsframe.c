@@ -161,3 +161,12 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
     // TODO: Finish this
     return stm;
 }
+
+Temp_map F_TempMap() {
+    Temp_map map = Temp_empty();
+    Temp_enter(map, F_FP(), "$fp");
+    Temp_enter(map, F_AT(), "$at");
+    Temp_enter(map, F_ZERO(), "$zero");
+    Temp_enter(map, F_RV(), "$v0");
+    return map;
+}

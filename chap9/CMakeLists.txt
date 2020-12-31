@@ -8,6 +8,8 @@ find_package(BISON REQUIRED)
 
 set(CMAKE_C_STANDARD 99)
 
+set(ARCH mips)
+
 FLEX_TARGET(scanner tiger.lex ${CMAKE_CURRENT_BINARY_DIR}/lex.yy.c)
 BISON_TARGET(parser tiger.grm ${CMAKE_CURRENT_BINARY_DIR}/y.tab.c)
 ADD_FLEX_BISON_DEPENDENCY(scanner parser)
@@ -24,9 +26,7 @@ add_executable(tiger
         table.c
         env.c
         temp.c
-        mipsframe.c
         codegen.c
-        mipscodegen.c
         escape.c
         translate.c
         tree.c
@@ -34,4 +34,7 @@ add_executable(tiger
         assem.c
         canon.c
         ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS}
+
+        arch/${ARCH}/${ARCH}frame.c
+        arch/${ARCH}/${ARCH}codegen.c
         )

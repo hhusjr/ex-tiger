@@ -10,7 +10,7 @@
  * Dynamic Programming algorithm for instr selection
  *
  * For code generation, you must define <match, gen, cost> pair
- * and store all of them in an array "patterns[]"
+ * and store all of them in an array "F_patterns[]"
  */
 
 static AS_instrList instrs = NULL, instrs_tail = NULL;
@@ -18,10 +18,10 @@ static AS_instrList instrs = NULL, instrs_tail = NULL;
 static void findOptimalExp(T_exp exp);
 static void findOptimalStm(T_stm stm);
 
-extern pattern patterns[];
-extern int n_pattern;
+extern F_pattern F_patterns[];
+extern int F_nPattern;
 
-void emit(AS_instr inst) {
+void F_emit(AS_instr inst) {
     if (instrs == NULL) {
         instrs = instrs_tail = AS_InstrList(inst, NULL);
     } else {
@@ -61,13 +61,13 @@ static void findOptimalExp(T_exp exp) {
         default: ;
     }
 
-    for (int i = 0; i < n_pattern; i++) {
-        if (patterns[i].kind != PAT_EXP) {
+    for (int i = 0; i < F_nPattern; i++) {
+        if (F_patterns[i].kind != PAT_EXP) {
             continue;
         }
 
         bool matched = FALSE;
-        T_expList res = patterns[i].matcher.exp(exp, &matched);
+        T_expList res = F_patterns[i].matcher.exp(exp, &matched);
         if (!matched) {
             continue;
         }
@@ -76,7 +76,7 @@ static void findOptimalExp(T_exp exp) {
         for (T_expList exps = res; exps; exps = exps->tail) {
             total_cost += exps->head->cost;
         }
-        total_cost += patterns[i].cost;
+        total_cost += F_patterns[i].cost;
 
         if (exp->cost == -1 || total_cost < exp->cost) {
             exp->cost = total_cost;
@@ -114,13 +114,13 @@ static void findOptimalStm(T_stm stm) {
         default: ;
     }
 
-    for (int i = 0; i < n_pattern; i++) {
-        if (patterns[i].kind != PAT_STM) {
+    for (int i = 0; i < F_nPattern; i++) {
+        if (F_patterns[i].kind != PAT_STM) {
             continue;
         }
 
         bool matched = FALSE;
-        T_expList res = patterns[i].matcher.stm(stm, &matched);
+        T_expList res = F_patterns[i].matcher.stm(stm, &matched);
         if (!matched) {
             continue;
         }
@@ -129,7 +129,7 @@ static void findOptimalStm(T_stm stm) {
         for (T_expList exps = res; exps; exps = exps->tail) {
             total_cost += exps->head->cost;
         }
-        total_cost += patterns[i].cost;
+        total_cost += F_patterns[i].cost;
 
         if (stm->cost == -1 || total_cost < stm->cost) {
             stm->cost = total_cost;
@@ -138,21 +138,21 @@ static void findOptimalStm(T_stm stm) {
     }
 }
 
-Temp_temp doExp(T_exp exp) {
+Temp_temp F_doExp(T_exp exp) {
     assert(exp->selection != -1);
-    return patterns[exp->selection].gen.exp(exp);
+    return F_patterns[exp->selection].gen.exp(exp);
 }
 
-void doStm(T_stm stm) {
+void F_doStm(T_stm stm) {
     assert(stm->selection != -1);
-    patterns[stm->selection].gen.stm(stm);
+    F_patterns[stm->selection].gen.stm(stm);
 }
 
 AS_instrList F_codegen(F_frame f, T_stmList stmts) {
     instrs = instrs_tail = NULL;
     for (; stmts; stmts = stmts->tail) {
         findOptimalStm(stmts->head);
-        doStm(stmts->head);
+        F_doStm(stmts->head);
     }
-    return instrs;
+    return F_procEntryExit2(instrs);
 }

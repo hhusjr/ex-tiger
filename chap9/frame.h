@@ -8,6 +8,7 @@
 #include "temp.h"
 #include "util.h"
 #include "tree.h"
+#include "assem.h"
 
 typedef struct F_frame_ *F_frame;
 typedef struct F_access_ *F_access;
@@ -22,6 +23,9 @@ struct F_frame_ {
     int n_frame_local;
     F_accessList formals;
 };
+
+extern const int F_wordSize;
+extern const int F_maxRegArg;
 
 F_frame F_newFrame(Temp_label name, U_boolList formals);
 
@@ -42,9 +46,6 @@ Temp_temp F_SP();
 Temp_temp F_RA();
 
 Temp_temp F_ZERO();
-
-extern const int F_wordSize;
-extern const int F_maxRegArg;
 
 T_exp F_exp(F_access access, T_exp fp);
 
@@ -81,9 +82,17 @@ struct F_fragList_ {
 
 T_stm F_procEntryExit1(F_frame frame, T_stm stm);
 
+AS_instrList F_procEntryExit2(AS_instrList body);
+
 F_fragList F_FragList(F_frag head, F_fragList tail);
 
 Temp_tempList F_Argregs();
+
+Temp_tempList F_Calleesaves();
+
+Temp_tempList F_Callersaves();
+
+Temp_tempList F_Specialregs();
 
 Temp_map F_TempMap();
 

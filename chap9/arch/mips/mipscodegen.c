@@ -328,7 +328,7 @@ static void genFrameArg(T_expList args, int off) {
             // Reserve stack space
             sprintf(cbuf, "addiu `d0, `s0, %d\n", -off);
             string i = String(cbuf);
-            emit(AS_Oper(i, L(F_SP(), NULL), L(F_SP(), NULL), NULL));
+            F_emit(AS_Oper(i, L(F_SP(), NULL), L(F_SP(), NULL), NULL));
         }
         return;
     }
@@ -338,12 +338,12 @@ static void genFrameArg(T_expList args, int off) {
     // Well, args suck
     sprintf(cbuf, "sw `s0, %d(`s1)\n", off);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(args->head), L(F_SP(), NULL)), NULL));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(args->head), L(F_SP(), NULL)), NULL));
 }
 
 static void genArg(T_expList args) {
     for (Temp_tempList argregs = F_Argregs(); args && argregs; argregs = argregs->tail) {
-        emit(AS_Oper("add `d0, `s0, `s1\n", L(argregs->head, NULL), L(doExp(args->head), L(F_ZERO(), NULL)), NULL));
+        F_emit(AS_Oper("add `d0, `s0, `s1\n", L(argregs->head, NULL), L(F_doExp(args->head), L(F_ZERO(), NULL)), NULL));
         args = args->tail;
     }
     if (args) {
@@ -355,14 +355,14 @@ static Temp_temp genConst(T_exp exp) {
     sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.CONST);
     Temp_temp r = Temp_newtemp();
     string i = String(cbuf);
-    emit(AS_Oper(i, L(r, NULL), L(F_ZERO(), NULL), NULL));
+    F_emit(AS_Oper(i, L(r, NULL), L(F_ZERO(), NULL), NULL));
     return r;
 }
 
 static Temp_temp genCall(T_exp exp) {
     genArg(exp->u.CALL.args);
     // TODO: Add Caller-save registers, return value register, and so on (Collect them in calldefs), to param d
-    emit(AS_Oper("jalr `s0, `d0\n", L(F_RA(), NULL), L(doExp(exp->u.CALL.fun), NULL), NULL));
+    F_emit(AS_Oper("jalr `s0, `d0\n", L(F_RA(), NULL), L(F_doExp(exp->u.CALL.fun), NULL), NULL));
     return F_RV();
 }
 
@@ -371,7 +371,7 @@ static Temp_temp genNamedCall(T_exp exp) {
     sprintf(cbuf, "jal %s\n", exp->u.CALL.fun->u.NAME->name);
     string i = String(cbuf);
     // TODO: Add Caller-save registers, return value register, and so on (Collect them in calldefs), to param d
-    emit(AS_Oper(i, L(F_RA(), NULL), NULL, NULL));
+    F_emit(AS_Oper(i, L(F_RA(), NULL), NULL, NULL));
     return F_RV();
 }
 
@@ -379,7 +379,7 @@ static Temp_temp genName(T_exp exp) {
     sprintf(cbuf, "la `d0, %s\n", exp->u.NAME->name);
     string i = String(cbuf);
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper(i, L(r, NULL), NULL, NULL));
+    F_emit(AS_Oper(i, L(r, NULL), NULL, NULL));
     return r;
 }
 
@@ -388,12 +388,13 @@ static Temp_temp genTemp(T_exp exp) {
 }
 
 static void genExp(T_stm stm) {
-    doExp(stm->u.EXP);
+    F_doExp(stm->u.EXP);
 }
 
 static Temp_temp genBinopPlus(T_exp exp) {
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper("add `d0, `s0, `s1\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    F_emit(AS_Oper("add `d0, `s0, `s1\n", L(r, NULL),
+                   L(F_doExp(exp->u.BINOP.left), L(F_doExp(exp->u.BINOP.right), NULL)), NULL));
     return r;
 }
 
@@ -401,7 +402,7 @@ static Temp_temp genBinopPlusImmEC(T_exp exp) {
     Temp_temp r = Temp_newtemp();
     sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.BINOP.right->u.CONST);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL), NULL));
+    F_emit(AS_Oper(i, L(r, NULL), L(F_doExp(exp->u.BINOP.left), NULL), NULL));
     return r;
 }
 
@@ -409,13 +410,14 @@ static Temp_temp genBinopPlusImmCE(T_exp exp) {
     Temp_temp r = Temp_newtemp();
     sprintf(cbuf, "addi `d0, `s0, %d\n", exp->u.BINOP.left->u.CONST);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.BINOP.right), NULL), NULL));
+    F_emit(AS_Oper(i, L(r, NULL), L(F_doExp(exp->u.BINOP.right), NULL), NULL));
     return r;
 }
 
 static Temp_temp genBinopMinus(T_exp exp) {
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper("sub `d0, `s0, `s1\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    F_emit(AS_Oper("sub `d0, `s0, `s1\n", L(r, NULL),
+                   L(F_doExp(exp->u.BINOP.left), L(F_doExp(exp->u.BINOP.right), NULL)), NULL));
     return r;
 }
 
@@ -423,108 +425,110 @@ static Temp_temp genBinopMinusImm(T_exp exp) {
     Temp_temp r = Temp_newtemp();
     sprintf(cbuf, "subi `d0, `s0, %d\n", exp->u.BINOP.right->u.CONST);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.BINOP.left), NULL), NULL));
+    F_emit(AS_Oper(i, L(r, NULL), L(F_doExp(exp->u.BINOP.left), NULL), NULL));
     return r;
 }
 
 static Temp_temp genBinopDiv(T_exp exp) {
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper("div `s0, `s1\nmflo `d0\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    F_emit(AS_Oper("div `s0, `s1\nmflo `d0\n", L(r, NULL),
+                   L(F_doExp(exp->u.BINOP.left), L(F_doExp(exp->u.BINOP.right), NULL)), NULL));
     return r;
 }
 
 static Temp_temp genBinopMul(T_exp exp) {
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper("mult `s0, `s1\nmflo `d0\n", L(r, NULL), L(doExp(exp->u.BINOP.left), L(doExp(exp->u.BINOP.right), NULL)), NULL));
+    F_emit(AS_Oper("mult `s0, `s1\nmflo `d0\n", L(r, NULL),
+                   L(F_doExp(exp->u.BINOP.left), L(F_doExp(exp->u.BINOP.right), NULL)), NULL));
     return r;
 }
 
 static void genBinopCjumpEq(T_stm stm) {
     sprintf(cbuf, "beq `s0, `s1, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.CJUMP.left), L(F_doExp(stm->u.CJUMP.right), NULL)),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpNe(T_stm stm) {
     sprintf(cbuf, "bne `s0, `s1, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), NULL)),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.CJUMP.left), L(F_doExp(stm->u.CJUMP.right), NULL)),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLt(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s0, `s1\nbne `d0, `s2, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, L(F_AT(), NULL), L(F_doExp(stm->u.CJUMP.left), L(F_doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGe(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s0, `s1\nbeq `d0, `s2, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, L(F_AT(), NULL), L(F_doExp(stm->u.CJUMP.left), L(F_doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGt(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s1, `s0\nbne `d0, `s2, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, L(F_AT(), NULL), L(F_doExp(stm->u.CJUMP.left), L(F_doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLe(T_stm stm) {
     sprintf(cbuf, "slt `d0, `s1, `s0\nbeq `d0, `s2, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, L(F_AT(), NULL), L(doExp(stm->u.CJUMP.left), L(doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, L(F_AT(), NULL), L(F_doExp(stm->u.CJUMP.left), L(F_doExp(stm->u.CJUMP.right), L(F_ZERO(), NULL))),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLt0(T_stm stm) {
     sprintf(cbuf, "bltz `s0, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.CJUMP.left), NULL),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpLe0(T_stm stm) {
     sprintf(cbuf, "blez `s0, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.CJUMP.left), NULL),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGt0(T_stm stm) {
     sprintf(cbuf, "bgtz `s0, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.CJUMP.left), NULL),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genBinopCjumpGe0(T_stm stm) {
     sprintf(cbuf, "bgez `s0, %s\n", stm->u.CJUMP.true->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.CJUMP.left), NULL),
-                 AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.CJUMP.left), NULL),
+                   AS_Targets(Temp_LabelList(stm->u.CJUMP.false, Temp_LabelList(stm->u.CJUMP.true, NULL)))));
 }
 
 static void genJump(T_stm stm) {
     // TODO: In this situation, what targets will be?
-    emit(AS_Oper("jr `s0\n", NULL, L(doExp(stm->u.JUMP.exp), NULL), AS_Targets(stm->u.JUMP.jumps)));
+    F_emit(AS_Oper("jr `s0\n", NULL, L(F_doExp(stm->u.JUMP.exp), NULL), AS_Targets(stm->u.JUMP.jumps)));
 }
 
 static void genNamedJump(T_stm stm) {
     sprintf(cbuf, "j %s\n", stm->u.JUMP.exp->u.NAME->name);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, NULL, AS_Targets(stm->u.JUMP.jumps)));
+    F_emit(AS_Oper(i, NULL, NULL, AS_Targets(stm->u.JUMP.jumps)));
 }
 
 static Temp_temp genMemLoadOffsetEC(T_exp exp) {
     sprintf(cbuf, "lw `d0, %d(`s0)\n", exp->u.MEM->u.BINOP.right->u.CONST);
     Temp_temp r = Temp_newtemp();
     string i = String(cbuf);
-    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.left), NULL), NULL));
+    F_emit(AS_Oper(i, L(r, NULL), L(F_doExp(exp->u.MEM->u.BINOP.left), NULL), NULL));
     return r;
 }
 
@@ -532,43 +536,44 @@ static Temp_temp genMemLoadOffsetCE(T_exp exp) {
     sprintf(cbuf, "lw `d0, %d(`s0)\n", exp->u.MEM->u.BINOP.left->u.CONST);
     Temp_temp r = Temp_newtemp();
     string i = String(cbuf);
-    emit(AS_Oper(i, L(r, NULL), L(doExp(exp->u.MEM->u.BINOP.right), NULL), NULL));
+    F_emit(AS_Oper(i, L(r, NULL), L(F_doExp(exp->u.MEM->u.BINOP.right), NULL), NULL));
     return r;
 }
 
 static Temp_temp genMemLoadExp(T_exp exp) {
     Temp_temp r = Temp_newtemp();
-    emit(AS_Oper("lw `d0, 0(`s0)\n", L(r, NULL), L(doExp(exp->u.MEM), NULL), NULL));
+    F_emit(AS_Oper("lw `d0, 0(`s0)\n", L(r, NULL), L(F_doExp(exp->u.MEM), NULL), NULL));
     return r;
 }
 
 static void genMoveTemp(T_stm stm) {
-    emit(AS_Oper("add `d0, `s0, `s1\n", L(stm->u.MOVE.dst->u.TEMP, NULL), L(doExp(stm->u.MOVE.src), L(F_ZERO(), NULL)), NULL));
+    F_emit(AS_Oper("add `d0, `s0, `s1\n", L(stm->u.MOVE.dst->u.TEMP, NULL),
+                   L(F_doExp(stm->u.MOVE.src), L(F_ZERO(), NULL)), NULL));
 }
 
 static void genLabel(T_stm stm) {
     sprintf(cbuf, "%s:\n", stm->u.LABEL->name);
     string i = String(cbuf);
-    emit(AS_Label(i, stm->u.LABEL));
+    F_emit(AS_Label(i, stm->u.LABEL));
 }
 
 static void genMemStoreOffsetEC(T_stm stm) {
     sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.right->u.CONST);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.left), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.MOVE.dst->u.BINOP.left), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 static void genMemStoreOffsetCE(T_stm stm) {
     sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.left->u.CONST);
     string i = String(cbuf);
-    emit(AS_Oper(i, NULL, L(doExp(stm->u.MOVE.dst->u.BINOP.right), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.MOVE.dst->u.BINOP.right), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 static void genMemStoreExp(T_stm stm) {
-    emit(AS_Oper("sw `s1, 0(`s0)\n", NULL, L(doExp(stm->u.MOVE.dst), L(doExp(stm->u.MOVE.src), NULL)), NULL));
+    F_emit(AS_Oper("sw `s1, 0(`s0)\n", NULL, L(F_doExp(stm->u.MOVE.dst), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
-pattern patterns[] = {
+F_pattern F_patterns[] = {
         {PAT_EXP, {.exp = matchConst}, {.exp = genConst}, 1},
         {PAT_EXP, {.exp = matchCall}, {.exp = genCall}, 1},
         {PAT_EXP, {.exp = matchNamedCall}, {.exp = genNamedCall}, 1},
@@ -604,4 +609,4 @@ pattern patterns[] = {
         {PAT_STM, {.stm = matchMemStoreExp}, {.stm = genMemStoreExp}, 1},
 };
 
-int n_pattern = sizeof(patterns) / sizeof(pattern);
+int F_nPattern = sizeof(F_patterns) / sizeof(F_pattern);

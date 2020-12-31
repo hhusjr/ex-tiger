@@ -29,9 +29,15 @@
 
 #include "frame.h"
 #include "temp.h"
+#include "assem.h"
 
 static struct Temp_temp_ f_ra = {0}, f_fp = {1}, f_sp = {2}, f_at = {3}, f_rv = {4}, f_zero = {5};
 static struct Temp_temp_ f_a0 = {6}, f_a1 = {7}, f_a2 = {8}, f_a3 = {9};
+static struct Temp_temp_ f_s0 = {10}, f_s1 = {11}, f_s2 = {12}, f_s3 = {13},
+                         f_s4 = {14}, f_s5 = {15}, f_s6 = {16}, f_s7 = {17};
+static struct Temp_temp_ f_t0 = {18}, f_t1 = {19}, f_t2 = {20}, f_t3 = {21},
+                         f_t4 = {22}, f_t5 = {23}, f_t6 = {24}, f_t7 = {25},
+                         f_t8 = {26}, f_t9 = {27};
 
 const int F_wordSize = 4;
 const int F_maxRegArg = 4;
@@ -164,6 +170,19 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
     return stm;
 }
 
+AS_instrList F_procEntryExit2(AS_instrList body) {
+    // "Sink" instruction
+    static Temp_tempList returnSink = NULL;
+    if (!returnSink) {
+        returnSink = F_Specialregs();
+        Temp_tempList tail = returnSink;
+        assert(tail); // Special regs will not be empty
+        for (; tail->tail; tail = tail->tail);
+        tail->tail = F_Calleesaves();
+    }
+    return AS_splice(body, AS_InstrList(AS_Oper("", NULL, returnSink, NULL), NULL));
+}
+
 Temp_map F_TempMap() {
     Temp_map map = Temp_empty();
     Temp_enter(map, F_FP(), "$fp");
@@ -171,14 +190,64 @@ Temp_map F_TempMap() {
     Temp_enter(map, F_AT(), "$at");
     Temp_enter(map, F_ZERO(), "$zero");
     Temp_enter(map, F_RV(), "$v0");
+    Temp_enter(map, F_RA(), "$ra");
+
     Temp_enter(map, &f_a0, "$a0");
     Temp_enter(map, &f_a1, "$a1");
     Temp_enter(map, &f_a2, "$a2");
     Temp_enter(map, &f_a3, "$a3");
-    Temp_enter(map, F_RA(), "$ra");
+    Temp_enter(map, &f_s0, "$s0");
+    Temp_enter(map, &f_s1, "$s1");
+    Temp_enter(map, &f_s2, "$s2");
+    Temp_enter(map, &f_s3, "$s3");
+    Temp_enter(map, &f_s4, "$s4");
+    Temp_enter(map, &f_s5, "$s5");
+    Temp_enter(map, &f_s6, "$s6");
+    Temp_enter(map, &f_s7, "$s7");
+    Temp_enter(map, &f_t0, "$t0");
+    Temp_enter(map, &f_t1, "$t1");
+    Temp_enter(map, &f_t2, "$t2");
+    Temp_enter(map, &f_t3, "$t3");
+    Temp_enter(map, &f_t4, "$t4");
+    Temp_enter(map, &f_t5, "$t5");
+    Temp_enter(map, &f_t6, "$t6");
+    Temp_enter(map, &f_t7, "$t7");
+    Temp_enter(map, &f_t8, "$t8");
+    Temp_enter(map, &f_t9, "$t9");
     return map;
 }
 
 Temp_tempList F_Argregs() {
-    return Temp_TempList(&f_a0, Temp_TempList(&f_a1, Temp_TempList(&f_a2, Temp_TempList(&f_a3, NULL))));
+    static Temp_tempList argregs = NULL;
+    if (!argregs) {
+        argregs = Temp_TempList(&f_a0, Temp_TempList(&f_a1, Temp_TempList(&f_a2, Temp_TempList(&f_a3, NULL))));
+    }
+    return argregs;
+}
+
+Temp_tempList F_Calleesaves() {
+    static Temp_tempList calleesaves = NULL;
+    if (!calleesaves) {
+        calleesaves = Temp_TempList(&f_s0, Temp_TempList(&f_s1, Temp_TempList(&f_s2, Temp_TempList(&f_s3,
+                                                                                                   Temp_TempList(&f_s4, Temp_TempList(&f_s5, Temp_TempList(&f_s6, Temp_TempList(&f_s7, NULL))))))));
+    }
+    return calleesaves;
+}
+
+Temp_tempList F_Callersaves() {
+    static Temp_tempList callersaves = NULL;
+    if (!callersaves) {
+        callersaves = Temp_TempList(&f_t0, Temp_TempList(&f_t1, Temp_TempList(&f_t2, Temp_TempList(&f_t3,
+                                                                                                   Temp_TempList(&f_t4, Temp_TempList(&f_t5, Temp_TempList(&f_t6, Temp_TempList(&f_t7,
+                                                                                                                                                                                Temp_TempList(&f_t8, Temp_TempList(&f_t9, NULL))))))))));
+    }
+    return callersaves;
+}
+
+Temp_tempList F_Specialregs() {
+    static Temp_tempList specialregs = NULL;
+    if (!specialregs) {
+        specialregs = Temp_TempList(&f_ra, Temp_TempList(&f_fp, Temp_TempList(&f_sp, Temp_TempList(&f_at, Temp_TempList(&f_rv, Temp_TempList(&f_zero, NULL))))));
+    }
+    return specialregs;
 }

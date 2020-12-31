@@ -39,6 +39,8 @@ Temp_temp F_AT();
 
 Temp_temp F_SP();
 
+Temp_temp F_RA();
+
 Temp_temp F_ZERO();
 
 extern const int F_wordSize;

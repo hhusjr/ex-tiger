@@ -30,7 +30,7 @@
 #include "frame.h"
 #include "temp.h"
 
-static struct Temp_temp_ f_fp = {1}, f_sp = {2}, f_at = {3}, f_rv = {4}, f_zero = {5};
+static struct Temp_temp_ f_ra = {0}, f_fp = {1}, f_sp = {2}, f_at = {3}, f_rv = {4}, f_zero = {5};
 static struct Temp_temp_ f_a0 = {6}, f_a1 = {7}, f_a2 = {8}, f_a3 = {9};
 
 const int F_wordSize = 4;
@@ -111,6 +111,10 @@ Temp_temp F_RV() {
     return &f_rv;
 }
 
+Temp_temp F_RA() {
+    return &f_ra;
+}
+
 Temp_temp F_AT() {
     return &f_at;
 }
@@ -163,6 +167,7 @@ T_stm F_procEntryExit1(F_frame frame, T_stm stm) {
 Temp_map F_TempMap() {
     Temp_map map = Temp_empty();
     Temp_enter(map, F_FP(), "$fp");
+    Temp_enter(map, F_SP(), "$sp");
     Temp_enter(map, F_AT(), "$at");
     Temp_enter(map, F_ZERO(), "$zero");
     Temp_enter(map, F_RV(), "$v0");
@@ -170,6 +175,7 @@ Temp_map F_TempMap() {
     Temp_enter(map, &f_a1, "$a1");
     Temp_enter(map, &f_a2, "$a2");
     Temp_enter(map, &f_a3, "$a3");
+    Temp_enter(map, F_RA(), "$ra");
     return map;
 }
 

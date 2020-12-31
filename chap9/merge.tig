@@ -1,6 +1,5 @@
 let
-    type x = array of int
-    var a := x [100] of 0
+    function sum(a:int,b:int,c:int,d:int,e:int,f:int): int = a + b + c + d + e + f
 in
-    a[3 + a[2]] = 4
+    sum(1,2,3,4,5,6)
 end

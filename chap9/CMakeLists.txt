@@ -25,6 +25,7 @@ add_executable(tiger
         env.c
         temp.c
         mipsframe.c
+        codegen.c
         mipscodegen.c
         escape.c
         translate.c

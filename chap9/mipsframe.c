@@ -31,6 +31,7 @@
 #include "temp.h"
 
 static struct Temp_temp_ f_fp = {1}, f_sp = {2}, f_at = {3}, f_rv = {4}, f_zero = {5};
+static struct Temp_temp_ f_a0 = {6}, f_a1 = {7}, f_a2 = {8}, f_a3 = {9};
 
 const int F_wordSize = 4;
 const int F_maxRegArg = 4;
@@ -73,12 +74,9 @@ F_frame F_newFrame(Temp_label name, U_boolList formals) {
     frame->formals = NULL;
     F_accessList tail = NULL;
     int offset = -F_wordSize;
-    int n_reg_alloca = 0;
     for (U_boolList p = formals; p; p = p->tail) {
-        assert(n_reg_alloca <= F_maxRegArg);
-        bool in_frame = p->head || n_reg_alloca >= F_maxRegArg;
-        F_accessList entry = F_AccessList(in_frame ? InFrame(offset += F_wordSize)
-                                                   : (n_reg_alloca++, InReg(Temp_newtemp())), NULL);
+        F_accessList entry = F_AccessList(p->head ? InFrame(offset += F_wordSize)
+                                                        : InReg(Temp_newtemp()), NULL);
         if (!frame->formals) {
             frame->formals = tail = entry;
         } else {
@@ -168,5 +166,13 @@ Temp_map F_TempMap() {
     Temp_enter(map, F_AT(), "$at");
     Temp_enter(map, F_ZERO(), "$zero");
     Temp_enter(map, F_RV(), "$v0");
+    Temp_enter(map, &f_a0, "$a0");
+    Temp_enter(map, &f_a1, "$a1");
+    Temp_enter(map, &f_a2, "$a2");
+    Temp_enter(map, &f_a3, "$a3");
     return map;
+}
+
+Temp_tempList F_Argregs() {
+    return Temp_TempList(&f_a0, Temp_TempList(&f_a1, Temp_TempList(&f_a2, Temp_TempList(&f_a3, NULL))));
 }

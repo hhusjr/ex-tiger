@@ -5,6 +5,12 @@ addi $t106, $zero, 4
 mult $t105, $t106
 mflo $t104
 add $t101, $t104, $zero
+add $a0, $t101, $zero
+jal malloc
+add $t102, $v0, $zero
+add $a0, $t102, $zero
+add $a1, $t101, $zero
+jal initArray
 add $t100, $t102, $zero
 addi $t107, $zero, 1
 add $t103, $t107, $zero

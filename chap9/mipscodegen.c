@@ -35,9 +35,12 @@ typedef struct pattern_ pattern;
 
 static void emit();
 
+static char cbuf[1024];
+
 static void findOptimalExp(T_exp exp);
 static void findOptimalStm(T_stm stm);
 static Temp_temp doExp(T_exp exp);
+static void doArg(T_expList args);
 static void doStm(T_stm stm);
 
 static T_expList matchBinopPlus(T_exp exp, bool* matched);
@@ -444,7 +447,7 @@ static T_expList matchProcCall(T_stm stm, bool* matched) {
 static T_expList matchFuncCall(T_stm stm, bool* matched) {
     if (stm->kind == T_MOVE && stm->u.MOVE.dst->kind == T_TEMP && stm->u.MOVE.src->kind == T_CALL) {
         *matched = TRUE;
-        return stm->u.EXP->u.CALL.args;
+        return stm->u.MOVE.src->u.CALL.args;
     }
     return NULL;
 }
@@ -452,7 +455,7 @@ static T_expList matchFuncCall(T_stm stm, bool* matched) {
 static T_expList matchCall(T_exp exp, bool* matched) {
     if (exp->kind == T_CALL) {
         *matched = TRUE;
-        return NULL;
+        return exp->u.CALL.args;
     }
     return NULL;
 }
@@ -481,6 +484,9 @@ static void findOptimalExp(T_exp exp) {
         case T_CALL:
             // Now only support named function call
             assert(exp->u.CALL.fun->kind == T_NAME);
+            for (T_expList args = exp->u.CALL.args; args; args = args->tail) {
+                findOptimalExp(args->head);
+            }
             break;
 
         default: ;
@@ -563,21 +569,52 @@ static void findOptimalStm(T_stm stm) {
     }
 }
 
+Temp_tempList L(Temp_temp h, Temp_tempList t) {
+    return Temp_TempList(h, t);
+}
+
 static Temp_temp doExp(T_exp exp) {
     assert(exp->selection != -1);
     return patterns[exp->selection].gen.exp(exp);
+}
+
+/*
+ * Calling convention:
+ * First 4 args in a0, a1, a2, a3
+ */
+static void doFrameArg(T_expList args, int off) {
+    if (!args) {
+        if (off) {
+            // Reserve stack space
+            sprintf(cbuf, "addiu `d0, `s0, %d\n", -off);
+            string i = String(cbuf);
+            emit(AS_Oper(i, L(F_SP(), NULL), L(F_SP(), NULL), NULL));
+        }
+        return;
+    }
+
+    doFrameArg(args->tail, off + F_wordSize);
+
+    // Well, args suck
+    sprintf(cbuf, "sw `s0, %d(`s1)\n", off);
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, L(doExp(args->head), L(F_SP(), NULL)), NULL));
+}
+
+static void doArg(T_expList args) {
+    for (Temp_tempList argregs = F_Argregs(); args && argregs; argregs = argregs->tail) {
+        emit(AS_Oper("add `d0, `s0, `s1\n", L(argregs->head, NULL), L(doExp(args->head), L(F_ZERO(), NULL)), NULL));
+        args = args->tail;
+    }
+    if (args) {
+        doFrameArg(args, 0);
+    }
 }
 
 static void doStm(T_stm stm) {
     assert(stm->selection != -1);
     patterns[stm->selection].gen.stm(stm);
 }
-
-Temp_tempList L(Temp_temp h, Temp_tempList t) {
-    return Temp_TempList(h, t);
-}
-
-char cbuf[1024];
 
 static Temp_temp genBinopPlus(T_exp exp) {
     Temp_temp r = Temp_newtemp();
@@ -704,9 +741,19 @@ static void genJump(T_stm stm) {
 }
 
 static void genProcCall(T_stm stm) {
+    doArg(stm->u.EXP->u.CALL.args);
+    assert(stm->u.EXP->u.CALL.fun->kind == T_NAME);
+    sprintf(cbuf, "jal %s\n", stm->u.EXP->u.CALL.fun->u.NAME->name);
+    string i = String(cbuf);
+    emit(AS_Oper(i, NULL, NULL, NULL));
 }
 
 static void genFuncCall(T_stm stm) {
+    doArg(stm->u.MOVE.src->u.CALL.args);
+    assert(stm->u.MOVE.src->u.CALL.fun->kind == T_NAME);
+    sprintf(cbuf, "jal %s\nadd `d0, `s0, `s1\n", stm->u.MOVE.src->u.CALL.fun->u.NAME->name);
+    string i = String(cbuf);
+    emit(AS_Oper(i, L(stm->u.MOVE.dst->u.TEMP, NULL), L(F_RV(), L(F_ZERO(), NULL)), NULL));
 }
 
 static Temp_temp genMemLoadOffsetEC(T_exp exp) {

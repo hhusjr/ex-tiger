@@ -2,6 +2,8 @@
 #include "stdint.h"
 #include "flowgraph.h"
 #include "frame.h"
+#include "assem.h"
+#include "table.h"
 
 LV_moveList LV_MoveList(G_node src, G_node dst, LV_moveList tail) {
     LV_moveList p = checked_malloc(sizeof(*p));
@@ -213,6 +215,7 @@ LV_graph LV_liveness(G_graph flow) {
         }
     } while (!fix_point);
 
+    /*
     // For debugging
     printf("Dataflow Analysis: IN and OUT set\n");
     for (G_nodeList nodes = G_nodes(flow); nodes; nodes = nodes->tail) {
@@ -229,4 +232,67 @@ LV_graph LV_liveness(G_graph flow) {
         }
         printf("\n\n");
     }
+     */
+
+    // Generate conflict graph
+    G_graph graph = G_Graph();
+    LV_moveList list = NULL;
+
+    TAB_table temp_map = TAB_empty(); // Map temp to node
+    for (G_nodeList nodes = G_nodes(flow); nodes; nodes = nodes->tail) {
+        G_node node = nodes->head;
+        AS_instr i = FG_instr(node);
+        LV_set out_set = G_look(out, node);
+
+        // For normal instructions
+        if (i->kind == I_OPER) {
+            // Add edge between each dst of node to each temp of conflicts
+            for (Temp_tempList dsts = i->u.OPER.dst; dsts; dsts = dsts->tail) {
+                G_node dst_node = TAB_look(temp_map, dsts->head);
+                if (!dst_node) {
+                    TAB_enter(temp_map, dsts->head, dst_node = G_Node(graph, dsts->head));
+                }
+                for (LV_set conflicts = out_set; conflicts; conflicts = conflicts->tail) {
+                    G_node conflict_node = TAB_look(temp_map, conflicts->head);
+                    if (!conflict_node) {
+                        TAB_enter(temp_map, conflicts->head, conflict_node = G_Node(graph, conflicts->head));
+                    }
+
+                    G_addEdge(dst_node, conflict_node);
+                }
+            }
+        } else if (i->kind == I_MOVE) {
+            G_node dst_node = TAB_look(temp_map, i->u.MOVE.dst->head);
+            if (!dst_node) {
+                TAB_enter(temp_map, i->u.MOVE.dst->head, dst_node = G_Node(graph, i->u.MOVE.dst->head));
+            }
+            G_node src_node = TAB_look(temp_map, i->u.MOVE.src->head);
+            if (!src_node) {
+                TAB_enter(temp_map, i->u.MOVE.src->head, src_node = G_Node(graph, i->u.MOVE.src->head));
+            }
+            list = LV_MoveList(src_node, dst_node, list);
+
+            for (LV_set conflicts = out_set; conflicts; conflicts = conflicts->tail) {
+                G_node conflict_node = TAB_look(temp_map, conflicts->head);
+                if (src_node == conflict_node) {
+                    continue;
+                }
+
+                if (!conflict_node) {
+                    TAB_enter(temp_map, conflicts->head, conflict_node = G_Node(graph, conflicts->head));
+                }
+
+                G_addEdge(dst_node, conflict_node);
+            }
+        } else {
+            assert(0);
+        }
+    }
+
+    LV_graph g = {
+            .graph = graph,
+            .moves = list
+    };
+
+    return g;
 }

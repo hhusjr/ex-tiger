@@ -546,8 +546,8 @@ static Temp_temp genMemLoadExp(T_exp exp) {
 }
 
 static void genMoveTemp(T_stm stm) {
-    F_emit(AS_Oper("add `d0, `s0, `s1\n", L(stm->u.MOVE.dst->u.TEMP, NULL),
-                   L(F_doExp(stm->u.MOVE.src), L(F_ZERO(), NULL)), NULL));
+    F_emit(AS_Move("add `d0, `s0, `s1\n", L(stm->u.MOVE.dst->u.TEMP, NULL),
+                   L(F_doExp(stm->u.MOVE.src), L(F_ZERO(), NULL))));
 }
 
 static void genLabel(T_stm stm) {

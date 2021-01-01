@@ -309,8 +309,8 @@ static T_expList matchMemStoreOffsetCE(T_stm stm, bool* matched) {
 static T_expList matchMemStoreExp(T_stm stm, bool* matched) {
     if (stm->kind == T_MOVE && stm->u.MOVE.dst->kind == T_MEM) {
         *matched = TRUE;
-        return T_ExpList(stm->u.MOVE.dst->u.MEM->u.BINOP.left,
-                         T_ExpList(stm->u.MOVE.dst->u.MEM->u.BINOP.right,
+        return T_ExpList(stm->u.MOVE.dst->u.MEM,
+                         T_ExpList(stm->u.MOVE.dst->u.MEM,
                                    T_ExpList(stm->u.MOVE.src, NULL)));
     }
     return NULL;

@@ -14,6 +14,7 @@
 #include "escape.h"
 #include "codegen.h"
 #include "translate.h"
+#include "flowgraph.h"
 
 extern bool anyErrors;
 
@@ -33,6 +34,8 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
     AS_printInstrList(out, iList,
                       Temp_layerMap(F_TempMap(), Temp_name()));
     fprintf(out, "END %s\n\n", Temp_labelstring(F_name(frame)));
+
+    G_show(stdout, G_nodes(FG_AssemFlowGraph(iList)), NULL);
 }
 
 extern A_exp absyn_root;

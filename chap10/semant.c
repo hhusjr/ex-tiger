@@ -252,7 +252,7 @@ static expty visitCallExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs at
         return Expty(Tr_const(0), Ty_Int());
     }
 
-    return Expty(Tr_functionCall(exp->u.call.func, func->u.fun.level, attrs.level, arg_tr, result == Ty_Void()),
+    return Expty(Tr_functionCall(exp->u.call.func, func->u.fun.level, attrs.level, arg_tr, isTypeCompat(result, Ty_Void())),
                  result);
 }
 
@@ -494,7 +494,7 @@ static expty visitSeqExp(S_table tenv, S_table venv, A_expList exps, visitorAttr
     }
 
     expty exp_v = visitSeqExp(tenv, venv, exps->tail, attrs);
-    return Expty(Tr_seq(stm_v.exp, exp_v.exp), exp_v.ty);
+    return Expty(isTypeCompat(exp_v.ty, Ty_Void()) ? Tr_stmtSeq(stm_v.exp, exp_v.exp) : Tr_seq(stm_v.exp, exp_v.exp), exp_v.ty);
 }
 
 static expty visitArrayExp(S_table tenv, S_table venv, A_exp exp, visitorAttrs attrs) {

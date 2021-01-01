@@ -34,6 +34,7 @@ add_executable(tiger
         assem.c
         canon.c
         graph.c
+        flowgraph.c
         ${BISON_parser_OUTPUTS} ${FLEX_scanner_OUTPUTS}
 
         arch/${ARCH}/${ARCH}frame.c

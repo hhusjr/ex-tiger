@@ -471,7 +471,8 @@ Tr_exp Tr_functionCall(S_symbol name, Tr_level callee, Tr_level caller, Tr_expLi
 
     if (!callee) {
         // If no level, then it must be a intrinsic function, without static link
-        return Tr_Ex(F_externalCall(name->name, converted_args));
+        T_exp c = F_externalCall(name->name, converted_args);
+        return !is_proc ? Tr_Ex(c) : Tr_Nx(T_Exp(c));
     }
 
     // calculate static link first

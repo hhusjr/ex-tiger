@@ -1,0 +1,5 @@
+let
+    function sum(a:int,b:int,c:int,d:int,e:int,f:int): int = a + b + c + d + e + f
+in
+    sum(1,2,3,4,5,6)
+end

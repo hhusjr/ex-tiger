@@ -15,6 +15,7 @@
 #include "codegen.h"
 #include "translate.h"
 #include "flowgraph.h"
+#include "liveness.h"
 
 extern bool anyErrors;
 
@@ -35,7 +36,7 @@ static void doProc(FILE *out, F_frame frame, T_stm body) {
                       Temp_layerMap(F_TempMap(), Temp_name()));
     fprintf(out, "END %s\n\n", Temp_labelstring(F_name(frame)));
 
-    G_show(stdout, G_nodes(FG_AssemFlowGraph(iList)), NULL);
+    LV_liveness(FG_AssemFlowGraph(iList));
 }
 
 extern A_exp absyn_root;
@@ -64,7 +65,7 @@ int main(int argc, string *argv) {
 
         SEM_transProg(absyn_root);
         frags = Tr_getResult();
-        if (anyErrors) return 1; /* don't continue */
+        //if (anyErrors) return 1; /* don't continue */
 
         /* convert the filename */
         sprintf(outfile, "%s.s", argv[1]);

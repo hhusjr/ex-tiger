@@ -1,3 +1,4 @@
+#include <tree.h>
 #include "codegen.h"
 #include "tree.h"
 
@@ -267,7 +268,7 @@ static T_expList matchMemLoadOffsetCE(T_exp exp, bool* matched) {
 static T_expList matchMemLoadExp(T_exp exp, bool* matched) {
     if (exp->kind == T_MEM) {
         *matched = TRUE;
-        return T_ExpList(exp->u.MEM->u.BINOP.right, NULL);
+        return T_ExpList(exp->u.MEM, NULL);
     }
     return NULL;
 }
@@ -309,9 +310,7 @@ static T_expList matchMemStoreOffsetCE(T_stm stm, bool* matched) {
 static T_expList matchMemStoreExp(T_stm stm, bool* matched) {
     if (stm->kind == T_MOVE && stm->u.MOVE.dst->kind == T_MEM) {
         *matched = TRUE;
-        return T_ExpList(stm->u.MOVE.dst->u.MEM,
-                         T_ExpList(stm->u.MOVE.dst->u.MEM,
-                                   T_ExpList(stm->u.MOVE.src, NULL)));
+        return T_ExpList(stm->u.MOVE.dst->u.MEM, T_ExpList(stm->u.MOVE.src, NULL));
     }
     return NULL;
 }
@@ -558,19 +557,19 @@ static void genLabel(T_stm stm) {
 }
 
 static void genMemStoreOffsetEC(T_stm stm) {
-    sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.right->u.CONST);
+    sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.MEM->u.BINOP.right->u.CONST);
     string i = String(cbuf);
-    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.MOVE.dst->u.BINOP.left), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.MOVE.dst->u.MEM->u.BINOP.left), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 static void genMemStoreOffsetCE(T_stm stm) {
-    sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.BINOP.left->u.CONST);
+    sprintf(cbuf, "sw `s1, %d(`s0)\n", stm->u.MOVE.dst->u.MEM->u.BINOP.left->u.CONST);
     string i = String(cbuf);
-    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.MOVE.dst->u.BINOP.right), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
+    F_emit(AS_Oper(i, NULL, L(F_doExp(stm->u.MOVE.dst->u.MEM->u.BINOP.right), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 static void genMemStoreExp(T_stm stm) {
-    F_emit(AS_Oper("sw `s1, 0(`s0)\n", NULL, L(F_doExp(stm->u.MOVE.dst), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
+    F_emit(AS_Oper("sw `s1, 0(`s0)\n", NULL, L(F_doExp(stm->u.MOVE.dst->u.MEM), L(F_doExp(stm->u.MOVE.src), NULL)), NULL));
 }
 
 F_pattern F_patterns[] = {

@@ -5,6 +5,9 @@
 #ifndef TIGER_GRAPH
 #define TIGER_GRAPH
 
+#include "util.h"
+#include "stdio.h"
+
 typedef struct G_graph_ *G_graph;  /* The "graph" type */
 typedef struct G_node_ *G_node;    /* The "node" type */
 

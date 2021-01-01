@@ -105,6 +105,7 @@ static void findOptimalStm(T_stm stm) {
         case T_MOVE:
             // Tree IR only supports MOVE(TEMP, e) or MOVE(MEM(e'), e)
             assert(stm->u.MOVE.dst->kind == T_TEMP || stm->u.MOVE.dst->kind == T_MEM);
+            findOptimalExp(stm->u.MOVE.dst);
             findOptimalExp(stm->u.MOVE.src);
             break;
         case T_EXP:

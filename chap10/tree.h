@@ -6,6 +6,8 @@
 #ifndef TIGER_TREE
 #define TIGER_TREE
 
+#include "temp.h"
+
 typedef struct T_stm_ *T_stm;
 typedef struct T_exp_ *T_exp;
 typedef struct T_expList_ *T_expList;

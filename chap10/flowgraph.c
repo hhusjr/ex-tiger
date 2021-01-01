@@ -84,6 +84,10 @@ Temp_tempList FG_use(G_node n) {
     assert(0);
 }
 
+AS_instr FG_instr(G_node n) {
+    return G_nodeInfo(n);
+}
+
 bool FG_isMove(G_node n) {
     AS_instr ins = G_nodeInfo(n);
     return ins->kind == I_MOVE;
